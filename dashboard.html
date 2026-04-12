@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Control Center</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #070a0d;
+  --bg1: #0c1118;
+  --bg2: #111820;
+  --bg3: #172030;
+  --border: #1c2b3a;
+  --border2: #243347;
+  --cyan: #00bcd4;
+  --green: #00e676;
+  --orange: #ff6d00;
+  --red: #f44336;
+  --yellow: #ffab00;
+  --blue: #448aff;
+  --text: #cdd9e5;
+  --text2: #8ba3b8;
+  --text3: #3d5a73;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --r: 2px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg0);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:14px}
+
+/* ── Scanlines ── */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.04) 3px,rgba(0,0,0,0.04) 4px)}
+
+/* ── Layout ── */
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* ── Sidebar ── */
+nav{width:220px;background:var(--bg1);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.nav-brand{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.nav-brand h1{font-family:var(--mono);font-size:13px;letter-spacing:2px;
+              text-transform:uppercase;color:var(--cyan)}
+.nav-brand p{font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:1px}
+.nav-section{padding:16px 0 8px 14px;font-size:9px;letter-spacing:2px;
+             text-transform:uppercase;color:var(--text3)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;
+          cursor:pointer;color:var(--text2);font-size:13px;transition:all .15s;
+          border-left:2px solid transparent}
+.nav-item:hover{background:var(--bg2);color:var(--text)}
+.nav-item.active{background:var(--bg2);color:var(--cyan);border-left-color:var(--cyan)}
+.nav-item .icon{font-size:15px;width:18px;text-align:center}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:9px;padding:2px 5px;
+           background:var(--bg3);border:1px solid var(--border2);color:var(--text3)}
+.nav-badge.online{color:var(--green);border-color:rgba(0,230,118,.3)}
+.nav-badge.offline{color:var(--red);border-color:rgba(244,67,54,.3)}
+.nav-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border)}
+.poll-info{font-family:var(--mono);font-size:10px;color:var(--text3)}
+#next-poll-bar{height:2px;background:var(--border);margin-top:6px;overflow:hidden}
+#next-poll-fill{height:100%;background:var(--cyan);width:0%;transition:width .5s linear}
+
+/* ── Main ── */
+main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* ── Topbar ── */
+.topbar{background:var(--bg1);border-bottom:1px solid var(--border);
+        padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
+        position:sticky;top:0;z-index:100}
+.topbar-left h2{font-size:16px;font-weight:600;color:var(--text)}
+.topbar-left p{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.btn{font-family:var(--mono);font-size:11px;padding:6px 14px;cursor:pointer;
+     border:1px solid var(--border2);background:var(--bg2);color:var(--text2);
+     letter-spacing:.5px;transition:all .15s;border-radius:var(--r)}
+.btn:hover{color:var(--cyan);border-color:var(--cyan)}
+.btn.primary{color:var(--cyan);border-color:var(--cyan);background:rgba(0,188,212,.05)}
+.btn.danger{color:var(--red);border-color:var(--red)}
+.btn.success{color:var(--green);border-color:var(--green)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.status-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);
+             font-size:11px;color:var(--text3)}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot.green{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+.dot.red{background:var(--red)}
+.dot.yellow{background:var(--yellow);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Page ── */
+.page{display:none;padding:24px;flex:1}
+.page.active{display:block}
+
+/* ── Stat row ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--bg1);border:1px solid var(--border);padding:16px;
+           border-radius:var(--r);position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+                  background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.3}
+.stat-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;
+            text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.stat-num{font-family:var(--mono);font-size:30px;line-height:1;color:var(--cyan)}
+.stat-num.green{color:var(--green)}
+.stat-num.orange{color:var(--orange)}
+.stat-num.red{color:var(--red)}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
+.progress{height:3px;background:var(--border);margin-top:10px;border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .6s ease}
+.progress-fill.warn{background:var(--yellow)}
+.progress-fill.danger{background:var(--red)}
+
+/* ── Service cards ── */
+.services-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
+.service-card{background:var(--bg1);border:1px solid var(--border);
+              border-radius:var(--r);overflow:hidden}
+.service-card.online{border-color:rgba(0,230,118,.2)}
+.service-card.offline{border-color:rgba(244,67,54,.15)}
+.service-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+                border-bottom:1px solid var(--border)}
+.service-title{display:flex;align-items:center;gap:10px}
+.service-icon{font-size:18px}
+.service-name{font-weight:600;font-size:14px}
+.service-desc{font-size:11px;color:var(--text3);margin-top:1px;font-family:var(--mono)}
+.service-badge{font-family:var(--mono);font-size:10px;padding:3px 8px;
+               border:1px solid;text-transform:uppercase;letter-spacing:.5px}
+.service-badge.online{color:var(--green);border-color:rgba(0,230,118,.4);background:rgba(0,230,118,.05)}
+.service-badge.offline{color:var(--red);border-color:rgba(244,67,54,.4);background:rgba(244,67,54,.05)}
+.service-badge.unknown{color:var(--text3);border-color:var(--border2)}
+.service-body{padding:14px 16px}
+.service-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.meta-item{background:var(--bg2);padding:8px;border:1px solid var(--border)}
+.meta-key{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.meta-val{font-family:var(--mono);font-size:12px;color:var(--text);margin-top:3px}
+.service-actions{display:flex;gap:8px;flex-wrap:wrap}
+.service-models{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.model-chip{font-family:var(--mono);font-size:11px;padding:3px 8px;
+            background:var(--bg3);border:1px solid var(--border2);color:var(--cyan)}
+
+/* ── Log viewer ── */
+.log-panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r)}
+.log-header{padding:12px 16px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between}
+.log-header h3{font-family:var(--mono);font-size:12px;color:var(--text2);
+               letter-spacing:1px;text-transform:uppercase}
+.log-tabs{display:flex;gap:4px}
+.log-tab{font-family:var(--mono);font-size:11px;padding:4px 10px;cursor:pointer;
+         border:1px solid var(--border);color:var(--text3);background:var(--bg0);
+         transition:all .15s}
+.log-tab.active{color:var(--cyan);border-color:var(--cyan);background:rgba(0,188,212,.05)}
+.log-body{height:360px;overflow-y:auto;padding:12px 16px;font-family:var(--mono);
+          font-size:11px;line-height:1.7;background:var(--bg0)}
+.log-body::-webkit-scrollbar{width:4px}
+.log-body::-webkit-scrollbar-track{background:var(--bg0)}
+.log-body::-webkit-scrollbar-thumb{background:var(--border2)}
+.log-line{color:var(--text2);word-break:break-all}
+.log-line.error{color:var(--red)}
+.log-line.warn{color:var(--yellow)}
+.log-line.info{color:var(--text2)}
+.log-line.debug{color:var(--text3)}
+.log-line.success{color:var(--green)}
+.log-footer{padding:8px 16px;border-top:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between}
+.log-count{font-family:var(--mono);font-size:10px;color:var(--text3)}
+
+/* ── Process table ── */
+.table-wrap{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-family:var(--mono);font-size:9px;letter-spacing:1.5px;
+   text-transform:uppercase;color:var(--text3);padding:10px 14px;
+   background:var(--bg0);border-bottom:1px solid var(--border)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-family:var(--mono);
+   font-size:12px;color:var(--text2)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg2)}
+.badge{font-size:9px;padding:2px 6px;border:1px solid;text-transform:uppercase;letter-spacing:.5px}
+.badge.online{color:var(--green);border-color:rgba(0,230,118,.4)}
+.badge.stopped{color:var(--text3);border-color:var(--border2)}
+.badge.errored{color:var(--red);border-color:rgba(244,67,54,.4)}
+
+/* ── Skills ── */
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.skill-card{background:var(--bg1);border:1px solid var(--border);padding:14px;
+            border-radius:var(--r);border-left:3px solid var(--border)}
+.skill-card.installed{border-left-color:var(--green)}
+.skill-card.missing{border-left-color:var(--red)}
+.skill-name{font-weight:600;font-size:13px;margin-bottom:4px}
+.skill-cat{font-family:var(--mono);font-size:10px;color:var(--text3);
+           text-transform:uppercase;letter-spacing:1px}
+.skill-status{font-family:var(--mono);font-size:10px;margin-top:8px}
+.skill-status.installed{color:var(--green)}
+.skill-status.missing{color:var(--red)}
+
+/* ── Deps ── */
+.dep-row{display:flex;align-items:center;justify-content:space-between;
+         padding:10px 14px;border-bottom:1px solid var(--border)}
+.dep-row:last-child{border-bottom:none}
+.dep-left{display:flex;align-items:center;gap:10px}
+.dep-dot{width:7px;height:7px;border-radius:50%}
+.dep-dot.ok{background:var(--green);box-shadow:0 0 5px var(--green)}
+.dep-dot.miss{background:var(--red)}
+.dep-name{font-size:13px;font-weight:500}
+.dep-req{font-family:var(--mono);font-size:9px;color:var(--red);margin-left:6px}
+.dep-right{display:flex;align-items:center;gap:10px}
+.dep-ver{font-family:var(--mono);font-size:11px;color:var(--text3);
+         max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep-cat{font-family:var(--mono);font-size:9px;padding:2px 5px;
+         border:1px solid var(--border2);color:var(--text3);text-transform:uppercase}
+
+/* ── Section header ── */
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+           color:var(--text3);display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';display:block;width:12px;height:1px;background:var(--cyan)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:20px;right:20px;z-index:9999;
+       background:var(--bg2);border:1px solid var(--border2);
+       padding:10px 16px;font-family:var(--mono);font-size:12px;
+       color:var(--text);opacity:0;transition:opacity .2s;pointer-events:none;
+       max-width:360px}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--green);color:var(--green)}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+/* Responsive */
+@media(max-width:900px){
+  .stat-row{grid-template-columns:repeat(2,1fr)}
+  .services-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  nav{display:none}
+  .stat-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── Sidebar ── -->
+<nav>
+  <div class="nav-brand">
+    <h1>⬡ AI Control</h1>
+    <p>LOCAL INFRASTRUCTURE</p>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <div class="nav-item active" onclick="showPage('overview',this)">
+    <span class="icon">◈</span> Dashboard
+  </div>
+
+  <div class="nav-section">Services</div>
+  <div class="nav-item" onclick="showPage('whatsapp',this)">
+    <span class="icon">💬</span> WhatsApp Bridge
+    <span class="nav-badge offline" id="nav-wa">—</span>
+  </div>
+  <div class="nav-item" onclick="showPage('lmstudio',this)">
+    <span class="icon">🧠</span> LM Studio
+    <span class="nav-badge offline" id="nav-lm">—</span>
+  </div>
+
+  <div class="nav-section">System</div>
+  <div class="nav-item" onclick="showPage('processes',this)">
+    <span class="icon">⚙</span> Processes
+  </div>
+  <div class="nav-item" onclick="showPage('skills',this)">
+    <span class="icon">◉</span> Skills
+  </div>
+  <div class="nav-item" onclick="showPage('deps',this)">
+    <span class="icon">⊞</span> Dependencies
+  </div>
+  <div class="nav-item" onclick="showPage('logs',this)">
+    <span class="icon">▤</span> Logs
+  </div>
+
+  <div class="nav-footer">
+    <div class="poll-info">
+      <div id="poll-label">Polling every 5 min</div>
+      <div id="next-poll-bar"><div id="next-poll-fill"></div></div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2 id="page-title">Dashboard</h2>
+      <p id="last-updated">Loading...</p>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill">
+        <div class="dot green" id="conn-dot"></div>
+        <span id="conn-label">LIVE</span>
+      </div>
+      <button class="btn primary" onclick="forcePoll()">↻ Refresh Now</button>
+    </div>
+  </div>
+
+  <!-- ── Overview Page ── -->
+  <div class="page active" id="page-overview">
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">// CPU Usage</div>
+        <div class="stat-num" id="ov-cpu">—</div>
+        <div class="stat-sub" id="ov-cpu-model">—</div>
+        <div class="progress"><div class="progress-fill" id="ov-cpu-bar" style="width:0"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">// Memory</div>
+        <div class="stat-num green" id="ov-ram">—</div>
+        <div class="stat-sub" id="ov-ram-detail">—</div>
+        <div class="progress"><div class="progress-fill" id="ov-ram-bar" style="width:0"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">// Uptime</div>
+        <div class="stat-num" id="ov-uptime" style="font-size:22px;padding-top:4px">—</div>
+        <div class="stat-sub" id="ov-host">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">// Active Services</div>
+        <div class="stat-num green" id="ov-services">—</div>
+        <div class="stat-sub" id="ov-services-detail">—</div>
+      </div>
+    </div>
+
+    <div class="sec-head"><div class="sec-title">Core Services</div></div>
+    <div class="services-grid" id="ov-services-grid">
+      <div style="color:var(--text3);font-family:var(--mono);font-size:12px">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ── WhatsApp Page ── -->
+  <div class="page" id="page-whatsapp">
+    <div class="sec-head"><div class="sec-title">WhatsApp Bridge Control</div></div>
+    <div id="wa-service-card"></div>
+    <div style="margin-top:20px">
+      <div class="sec-head"><div class="sec-title">Live Logs</div></div>
+      <div class="log-panel">
+        <div class="log-header">
+          <h3>whatsapp-bridge</h3>
+          <button class="btn" onclick="loadLogs('whatsapp-bridge')">↻ Reload</button>
+        </div>
+        <div class="log-body" id="log-wa">Loading logs...</div>
+        <div class="log-footer">
+          <span class="log-count" id="log-wa-count">—</span>
+          <button class="btn" onclick="clearLog('log-wa')">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LM Studio Page ── -->
+  <div class="page" id="page-lmstudio">
+    <div class="sec-head"><div class="sec-title">LM Studio Control</div></div>
+    <div id="lm-service-card"></div>
+  </div>
+
+  <!-- ── Processes Page ── -->
+  <div class="page" id="page-processes">
+    <div class="sec-head"><div class="sec-title">PM2 Processes</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Status</th><th>CPU</th><th>Memory</th><th>Restarts</th><th>Uptime</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="proc-tbody"><tr><td colspan="7" style="color:var(--text3)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Skills Page ── -->
+  <div class="page" id="page-skills">
+    <div class="sec-head"><div class="sec-title">Skills Registry</div></div>
+    <div class="skills-grid" id="skills-grid"></div>
+  </div>
+
+  <!-- ── Deps Page ── -->
+  <div class="page" id="page-deps">
+    <div class="sec-head"><div class="sec-title">软件依赖清单 — Software Dependencies</div></div>
+    <div class="table-wrap" id="deps-list"></div>
+  </div>
+
+  <!-- ── Logs Page ── -->
+  <div class="page" id="page-logs">
+    <div class="sec-head">
+      <div class="sec-title">Log Viewer</div>
+    </div>
+    <div class="log-panel">
+      <div class="log-header">
+        <div class="log-tabs" id="log-tabs">
+          <div class="log-tab active" onclick="switchLogTab('whatsapp-bridge',this)">whatsapp-bridge</div>
+          <div class="log-tab" onclick="switchLogTab('ai-dashboard',this)">ai-dashboard</div>
+        </div>
+        <button class="btn" id="log-reload-btn" onclick="reloadActiveLog()">↻ Reload</button>
+      </div>
+      <div class="log-body" id="log-main">Select a service above</div>
+      <div class="log-footer">
+        <span class="log-count" id="log-main-count">—</span>
+        <div style="display:flex;gap:8px">
+          <label style="font-family:var(--mono);font-size:11px;color:var(--text3);cursor:pointer">
+            <input type="checkbox" id="log-autoscroll" checked> Auto-scroll
+          </label>
+          <button class="btn" onclick="clearLog('log-main')">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let state = null;
+let activeLogService = 'whatsapp-bridge';
+let pollTimer = null;
+let POLL_INTERVAL_MS = 5 * 60 * 1000;
+
+// ── Page nav ──────────────────────────────────────────────────────────────────
+const pageTitles = {
+  overview: 'Dashboard', whatsapp: 'WhatsApp Bridge',
+  lmstudio: 'LM Studio', processes: 'Processes',
+  skills: 'Skills Registry', deps: 'Dependencies', logs: 'Log Viewer'
+};
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = pageTitles[id] || id;
+  if (id === 'whatsapp') loadLogs('whatsapp-bridge', 'log-wa', 'log-wa-count');
+  if (id === 'logs') reloadActiveLog();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.className = '', 3000);
+}
+
+// ── Fetch wrapper ─────────────────────────────────────────────────────────────
+async function api(url, method = 'GET', body = null) {
+  const opts = { method, headers: {} };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+// ── Color helpers ─────────────────────────────────────────────────────────────
+function pctColor(n) { return n > 85 ? 'red' : n > 65 ? 'orange' : 'green'; }
+function pctBarClass(n) { return n > 85 ? 'danger' : n > 65 ? 'warn' : ''; }
+
+// ── Render: overview stats ────────────────────────────────────────────────────
+function renderStats(s) {
+  const cpu = s.system.cpu, mem = s.system.memory;
+  const cpuEl = document.getElementById('ov-cpu');
+  cpuEl.textContent = cpu + '%'; cpuEl.className = 'stat-num ' + pctColor(cpu);
+  document.getElementById('ov-cpu-model').textContent = s.system.cpuModel.split(' ').slice(0,4).join(' ');
+  const cpuBar = document.getElementById('ov-cpu-bar');
+  cpuBar.style.width = cpu + '%'; cpuBar.className = 'progress-fill ' + pctBarClass(cpu);
+
+  const ramEl = document.getElementById('ov-ram');
+  ramEl.textContent = mem.percent + '%'; ramEl.className = 'stat-num ' + pctColor(mem.percent);
+  document.getElementById('ov-ram-detail').textContent = `${mem.used}/${mem.total} GB`;
+  const ramBar = document.getElementById('ov-ram-bar');
+  ramBar.style.width = mem.percent + '%'; ramBar.className = 'progress-fill ' + pctBarClass(mem.percent);
+
+  document.getElementById('ov-uptime').textContent = s.system.uptime;
+  document.getElementById('ov-host').textContent = s.system.hostname + ' · ' + s.system.platform;
+
+  const online = [s.whatsapp?.online, s.lmstudio?.online].filter(Boolean).length;
+  document.getElementById('ov-services').textContent = online + '/2';
+  document.getElementById('ov-services-detail').textContent = 'core services online';
+}
+
+// ── Render: service card (generic) ───────────────────────────────────────────
+function serviceCard(cfg) {
+  const online = cfg.online;
+  const badgeClass = online ? 'online' : 'offline';
+  const cardClass  = online ? 'online' : 'offline';
+  const actions = cfg.actions.map(a =>
+    `<button class="btn ${a.cls||''}" onclick="${a.fn}">${a.label}</button>`
+  ).join('');
+  const meta = cfg.meta.map(m =>
+    `<div class="meta-item"><div class="meta-key">${m.key}</div><div class="meta-val">${m.val}</div></div>`
+  ).join('');
+  const extra = cfg.extra || '';
+  return `
+    <div class="service-card ${cardClass}">
+      <div class="service-header">
+        <div class="service-title">
+          <span class="service-icon">${cfg.icon}</span>
+          <div>
+            <div class="service-name">${cfg.name}</div>
+            <div class="service-desc">${cfg.desc}</div>
+          </div>
+        </div>
+        <span class="service-badge ${badgeClass}">${online ? 'ONLINE' : 'OFFLINE'}</span>
+      </div>
+      <div class="service-body">
+        ${extra}
+        <div class="service-meta">${meta}</div>
+        <div class="service-actions">${actions}</div>
+      </div>
+    </div>`;
+}
+
+// ── Render: overview service grid ─────────────────────────────────────────────
+function renderOverviewServices(s) {
+  const wa = s.whatsapp, lm = s.lmstudio;
+  const waMeta = [
+    { key: 'Status',   val: wa.status || '—' },
+    { key: 'CPU',      val: (wa.cpu ?? '—') + '%' },
+    { key: 'Restarts', val: wa.restarts ?? '—' },
+  ];
+  const lmMeta = [
+    { key: 'Status', val: lm.online ? 'running' : 'stopped' },
+    { key: 'Models', val: lm.models?.length ?? 0 },
+    { key: 'Port',   val: '1234' },
+  ];
+  const modelsHtml = lm.online && lm.models?.length
+    ? `<div class="service-models">${lm.models.map(m => `<div class="model-chip">${m}</div>`).join('')}</div>`
+    : '';
+
+  document.getElementById('ov-services-grid').innerHTML =
+    serviceCard({
+      icon: '💬', name: 'WhatsApp Bridge', desc: 'whatsapp-web.js · PM2',
+      online: wa.online, meta: waMeta,
+      actions: [
+        { label: '▶ Start',   fn: "controlService('start','whatsapp-bridge')",   cls: 'success' },
+        { label: '■ Stop',    fn: "controlService('stop','whatsapp-bridge')",    cls: 'danger'  },
+        { label: '↻ Restart', fn: "controlService('restart','whatsapp-bridge')"              },
+        { label: '▤ Logs',    fn: "showPage('whatsapp',document.querySelectorAll('.nav-item')[1])" },
+      ]
+    }) +
+    serviceCard({
+      icon: '🧠', name: 'LM Studio', desc: 'Local LLM server · port 1234',
+      online: lm.online, meta: lmMeta, extra: modelsHtml,
+      actions: [
+        { label: '▶ Start Server', fn: "controlLM('start')",   cls: 'success' },
+        { label: '■ Stop Server',  fn: "controlLM('stop')",    cls: 'danger'  },
+        { label: '↻ Status',       fn: "controlLM('status')"                  },
+      ]
+    });
+}
+
+// ── Render: dedicated service pages ──────────────────────────────────────────
+function renderWAPage(s) {
+  const wa = s.whatsapp;
+  document.getElementById('wa-service-card').innerHTML = serviceCard({
+    icon: '💬', name: 'WhatsApp Bridge', desc: 'D:\\AIAssist\\whatsapp-bridge',
+    online: wa.online,
+    meta: [
+      { key: 'PM2 Status', val: wa.status || '—' },
+      { key: 'CPU',        val: (wa.cpu ?? '—') + '%' },
+      { key: 'Memory',     val: (wa.memory ?? '—') + ' MB' },
+      { key: 'Restarts',   val: wa.restarts ?? '—' },
+      { key: 'Uptime',     val: wa.uptime ?? '—' },
+      { key: 'PM2',        val: wa.pm2 ? 'registered' : 'not found' },
+    ],
+    actions: [
+      { label: '▶ Start',   fn: "controlService('start','whatsapp-bridge')",   cls: 'success' },
+      { label: '■ Stop',    fn: "controlService('stop','whatsapp-bridge')",    cls: 'danger'  },
+      { label: '↻ Restart', fn: "controlService('restart','whatsapp-bridge')"              },
+    ]
+  });
+}
+
+function renderLMPage(s) {
+  const lm = s.lmstudio;
+  const modelsHtml = lm.online && lm.models?.length
+    ? `<div class="service-models">${lm.models.map(m => `<div class="model-chip">${m}</div>`).join('')}</div>`
+    : '';
+  document.getElementById('lm-service-card').innerHTML = serviceCard({
+    icon: '🧠', name: 'LM Studio Server', desc: 'Local LLM API · http://localhost:1234',
+    online: lm.online, extra: modelsHtml,
+    meta: [
+      { key: 'Status',       val: lm.online ? 'running' : 'stopped' },
+      { key: 'Models loaded', val: lm.models?.length ?? 0 },
+      { key: 'API port',     val: '1234' },
+    ],
+    actions: [
+      { label: '▶ Start Server',  fn: "controlLM('start')",  cls: 'success' },
+      { label: '■ Stop Server',   fn: "controlLM('stop')",   cls: 'danger'  },
+      { label: '? Check Status',  fn: "controlLM('status')"                 },
+    ]
+  });
+}
+
+// ── Render: PM2 processes table ───────────────────────────────────────────────
+function renderProcesses(procs) {
+  const tbody = document.getElementById('proc-tbody');
+  if (!procs.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text3)">No PM2 processes</td></tr>';
+    return;
+  }
+  tbody.innerHTML = procs.map(p => `
+    <tr>
+      <td style="color:var(--text);font-weight:600">${p.name}</td>
+      <td><span class="badge ${p.status}">${p.status.toUpperCase()}</span></td>
+      <td>${p.cpu}%</td>
+      <td>${p.memory} MB</td>
+      <td>${p.restarts}</td>
+      <td>${p.uptime}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn success" onclick="controlService('start','${p.name}')">▶</button>
+        <button class="btn danger"  onclick="controlService('stop','${p.name}')">■</button>
+        <button class="btn"         onclick="controlService('restart','${p.name}')">↻</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ── Render: skills ────────────────────────────────────────────────────────────
+function renderSkills(skills) {
+  document.getElementById('skills-grid').innerHTML = skills.map(s => `
+    <div class="skill-card ${s.status}">
+      <div class="skill-name">${s.name}</div>
+      <div class="skill-cat">${s.category}</div>
+      <div class="skill-status ${s.status}">● ${s.status.toUpperCase()}</div>
+    </div>`).join('');
+}
+
+// ── Render: deps ──────────────────────────────────────────────────────────────
+function renderDeps(deps) {
+  document.getElementById('deps-list').innerHTML = deps.map(d => `
+    <div class="dep-row">
+      <div class="dep-left">
+        <div class="dep-dot ${d.installed ? 'ok' : 'miss'}"></div>
+        <span class="dep-name">${d.name}</span>
+        ${d.required && !d.installed ? '<span class="dep-req">REQUIRED</span>' : ''}
+      </div>
+      <div class="dep-right">
+        <span class="dep-ver">${d.version || (d.installed ? '✓' : '✗ not found')}</span>
+        <span class="dep-cat">${d.category}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ── Render: sidebar badges ────────────────────────────────────────────────────
+function renderNavBadges(s) {
+  const waEl = document.getElementById('nav-wa');
+  const lmEl = document.getElementById('nav-lm');
+  waEl.textContent = s.whatsapp?.online ? 'ONLINE' : 'OFFLINE';
+  waEl.className   = 'nav-badge ' + (s.whatsapp?.online ? 'online' : 'offline');
+  lmEl.textContent = s.lmstudio?.online ? 'ONLINE' : 'OFFLINE';
+  lmEl.className   = 'nav-badge ' + (s.lmstudio?.online ? 'online' : 'offline');
+}
+
+// ── Master render ─────────────────────────────────────────────────────────────
+function render(s) {
+  state = s;
+  renderStats(s);
+  renderOverviewServices(s);
+  renderWAPage(s);
+  renderLMPage(s);
+  renderProcesses(s.processes || []);
+  renderSkills(s.skills || []);
+  renderDeps(s.software || []);
+  renderNavBadges(s);
+  document.getElementById('last-updated').textContent = 'Last updated: ' + s.timestamp;
+  startPollCountdown(s.meta?.nextPoll);
+}
+
+// ── Load data ─────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const data = await api('/api/status');
+    render(data);
+    document.getElementById('conn-dot').className = 'dot green';
+    document.getElementById('conn-label').textContent = 'LIVE';
+  } catch (e) {
+    document.getElementById('conn-dot').className = 'dot red';
+    document.getElementById('conn-label').textContent = 'ERROR';
+  }
+}
+
+async function forcePoll() {
+  toast('Refreshing...', 'ok');
+  await api('/api/poll');
+  await loadData();
+}
+
+// ── Poll countdown bar ────────────────────────────────────────────────────────
+function startPollCountdown(nextPollTs) {
+  if (!nextPollTs) return;
+  const fill = document.getElementById('next-poll-fill');
+  const label = document.getElementById('poll-label');
+  const tick = () => {
+    const now = Date.now();
+    const remaining = Math.max(0, nextPollTs - now);
+    const pct = 100 - (remaining / POLL_INTERVAL_MS) * 100;
+    fill.style.width = pct + '%';
+    const secs = Math.round(remaining / 1000);
+    label.textContent = secs > 0 ? `Next poll in ${secs}s` : 'Polling...';
+  };
+  tick();
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    tick();
+    // Auto-reload data when poll window arrives
+    if (Date.now() >= nextPollTs) {
+      clearInterval(pollTimer);
+      loadData();
+    }
+  }, 1000);
+}
+
+// ── Service control ───────────────────────────────────────────────────────────
+async function controlService(action, target) {
+  try {
+    toast(`${action} ${target}...`, 'ok');
+    const r = await api('/api/control', 'POST', { action, target });
+    if (r.ok) {
+      toast(`✓ ${target} ${action}ed`, 'ok');
+      await loadData();
+    } else {
+      toast('Error: ' + r.error, 'err');
+    }
+  } catch (e) {
+    toast('Request failed: ' + e.message, 'err');
+  }
+}
+
+async function controlLM(action) {
+  try {
+    toast(`LM Studio: ${action}...`, 'ok');
+    const r = await api('/api/lmstudio', 'POST', { action });
+    if (r.ok) {
+      toast('✓ LM Studio ' + action + ': ' + (r.output?.split('\n')[0] || 'done'), 'ok');
+      await loadData();
+    } else {
+      toast('Error: ' + r.error, 'err');
+    }
+  } catch (e) {
+    toast('Request failed: ' + e.message, 'err');
+  }
+}
+
+// ── Log viewer ────────────────────────────────────────────────────────────────
+async function loadLogs(name, containerId = 'log-main', countId = 'log-main-count') {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '<span style="color:var(--text3)">Loading...</span>';
+  try {
+    const data = await api(`/api/logs?name=${name}`);
+    const lines = data.logs || [];
+    container.innerHTML = lines.map(l => {
+      const txt = (typeof l === 'object') ? l.line : l;
+      let cls = 'log-line info';
+      if (/error|ERR|❌|crash/i.test(txt)) cls = 'log-line error';
+      else if (/warn|⚠/i.test(txt))        cls = 'log-line warn';
+      else if (/✓|✅|success|ready|online/i.test(txt)) cls = 'log-line success';
+      else if (/\[debug\]/i.test(txt))      cls = 'log-line debug';
+      return `<div class="${cls}">${escHtml(txt)}</div>`;
+    }).join('') || '<span style="color:var(--text3)">No log entries found</span>';
+    document.getElementById(countId).textContent = lines.length + ' lines';
+    if (document.getElementById('log-autoscroll')?.checked) {
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch (e) {
+    container.innerHTML = `<span style="color:var(--red)">Failed to load logs: ${e.message}</span>`;
+  }
+}
+
+function clearLog(id) {
+  document.getElementById(id).innerHTML = '<span style="color:var(--text3)">Cleared</span>';
+}
+
+function switchLogTab(name, el) {
+  document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  activeLogService = name;
+  loadLogs(name);
+}
+
+function reloadActiveLog() {
+  loadLogs(activeLogService);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>

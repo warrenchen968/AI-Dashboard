@@ -1,0 +1,9 @@
+{
+  "name": "ai-control-center",
+  "version": "2.0.0",
+  "description": "AI Assistant local control center",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
