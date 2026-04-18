@@ -1,0 +1,16 @@
+{
+  "_comment": "Edit this file to reflect the software installed on your machine. Order defines display order (and implicit dependency flow). Restart server.js after editing.",
+  "items": [
+    { "order": 1,  "layer": "Runtime",            "name": "Node.js",         "purpose": "JS runtime for dashboard + bridges",     "check": { "kind": "cmd", "cmd": "node --version" },                             "prerequisites": [] },
+    { "order": 2,  "layer": "Runtime",            "name": "Python",          "purpose": "Mempalace + Graph RAG",                  "check": { "kind": "cmd", "cmd": "python --version" },                           "prerequisites": [] },
+    { "order": 3,  "layer": "Runtime",            "name": "Git",             "purpose": "Version control",                        "check": { "kind": "cmd", "cmd": "git --version" },                              "prerequisites": [] },
+    { "order": 4,  "layer": "Runtime",            "name": "GitHub CLI",      "purpose": "Repo + PR automation",                   "check": { "kind": "cmd", "cmd": "gh --version" },                               "prerequisites": ["Git"] },
+    { "order": 5,  "layer": "Runtime",            "name": "Bun",             "purpose": "Required by gstack skill",               "check": { "kind": "cmd", "cmd": "bun --version" },                              "prerequisites": [] },
+    { "order": 10, "layer": "LLM runtime",        "name": "LM Studio",       "purpose": "Local LLM serving (primary)",            "check": { "kind": "http", "url": "http://127.0.0.1:1234/v1/models" },           "prerequisites": [] },
+    { "order": 11, "layer": "LLM runtime",        "name": "Ollama",          "purpose": "Alternate local LLM serving",            "check": { "kind": "http", "url": "http://127.0.0.1:11434/api/tags" },           "prerequisites": [] },
+    { "order": 20, "layer": "Memory & knowledge", "name": "Mempalace",       "purpose": "Long-term memory store",                 "check": { "kind": "http", "url": "http://127.0.0.1:8765/health" },              "prerequisites": ["Python"] },
+    { "order": 21, "layer": "Memory & knowledge", "name": "Graph RAG",       "purpose": "Knowledge graph retrieval",              "check": { "kind": "http", "url": "http://127.0.0.1:8766/health" },              "prerequisites": ["Python"] },
+    { "order": 30, "layer": "Messaging",          "name": "WhatsApp Bridge", "purpose": "Invoke assistant via WhatsApp",          "check": { "kind": "pm2", "process": "whatsapp-bridge" },                        "prerequisites": ["Node.js", "LM Studio"] },
+    { "order": 40, "layer": "Orchestration",      "name": "AI Dashboard",    "purpose": "This dashboard (self)",                  "check": { "kind": "self" },                                                     "prerequisites": ["Node.js"] }
+  ]
+}
