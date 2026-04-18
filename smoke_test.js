@@ -54,7 +54,7 @@ const CONTRACTS = {
 function get(path) {
   return new Promise(resolve => {
     const req = http.request(
-      { host: '127.0.0.1', port: 7788, path, method: 'GET', timeout: 4000 },
+      { host: '127.0.0.1', port: process.env.PORT ? Number(process.env.PORT) : 7788, path, method: 'GET', timeout: 4000 },
       res => {
         let d = '';
         res.on('data', c => d += c);
@@ -102,7 +102,7 @@ function checkShape(path, body) {
   const lines = [];
 
   const host = '127.0.0.1';
-  const port = 7788;
+  const port = process.env.PORT ? Number(process.env.PORT) : 7788;
 
   function httpGet(h, p, pathname) { return get(pathname); }
 

@@ -297,6 +297,41 @@ function firstLine(s) {
   return (s || '').split(/\r?\n/)[0].trim();
 }
 
+// Expand %WINVAR% (Windows) and ${UNIXVAR} / $UNIXVAR env vars in a path string.
+function expandEnv(str) {
+  if (process.platform === 'win32') {
+    return str.replace(/%([^%]+)%/g, (_, k) => (process.env[k] !== undefined ? process.env[k] : '%' + k + '%'));
+  }
+  return str.replace(/\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+    (_, a, b) => (process.env[a || b] !== undefined ? process.env[a || b] : ''));
+}
+
+// Reduction rules for compound sub-checks.
+// Named "installed"+"live" pattern: fs+http for "installed but server off" → degraded.
+// Generic fallback: all-ok → ok, any-missing → missing, else degraded.
+function reduceCompound(subs) {
+  const byId = {};
+  for (const s of subs) byId[s.id] = s.res;
+  const installed = byId['installed'];
+  const live = byId['live'];
+
+  if (installed && live) {
+    if (installed.status === 'ok' && live.status === 'ok')
+      return { status: 'ok', version: live.version || installed.version, detail: '' };
+    if (installed.status === 'ok')
+      return { status: 'degraded', version: '', detail: 'installed, server not started' };
+    return { status: 'missing', version: '', detail: installed.detail || 'not installed' };
+  }
+
+  const statuses = subs.map((s) => s.res.status);
+  if (statuses.every((s) => s === 'ok'))
+    return { status: 'ok', version: subs.map((s) => s.res.version).find(Boolean) || '', detail: '' };
+  const failed = subs.filter((s) => s.res.status !== 'ok').map((s) => s.id).join(', ');
+  if (statuses.some((s) => s === 'missing'))
+    return { status: 'missing', version: '', detail: 'failed: ' + failed };
+  return { status: 'degraded', version: '', detail: 'degraded: ' + failed };
+}
+
 async function runCheck(item, pm2Reader) {
   const check = item.check || { kind: 'unknown' };
   try {
@@ -323,6 +358,26 @@ async function runCheck(item, pm2Reader) {
       }
       case 'self':
         return { status: 'ok', version: process.versions.node, detail: 'pid ' + process.pid };
+      case 'fs': {
+        const paths = (check.paths || (check.path ? [check.path] : [])).map(expandEnv);
+        for (const p of paths) {
+          try { if (fs.existsSync(p)) return { status: 'ok', version: '', detail: 'found ' + p }; }
+          catch (_) {}
+        }
+        return { status: 'missing', version: '', detail: 'not found in: ' + paths.join(', ') };
+      }
+      case 'pip': {
+        const r = await execCmd('python -m pip show ' + check.package, 4000);
+        if (!r.ok) return { status: 'missing', version: '', detail: 'pip show failed' };
+        const m = r.stdout.match(/^Version:\s*(.+)$/m);
+        return { status: 'ok', version: m ? m[1].trim() : '', detail: '' };
+      }
+      case 'compound': {
+        const subs = await Promise.all(
+          (check.checks || []).map(async (c) => ({ id: c.id, res: await runCheck({ check: c }, pm2Reader) }))
+        );
+        return reduceCompound(subs);
+      }
       default:
         return { status: 'unknown', version: '', detail: `unknown check.kind ${check.kind}` };
     }
@@ -429,4 +484,6 @@ module.exports._internals = {
   DEFAULT_MANIFEST,
   loadManifest,
   runCheck,
+  expandEnv,
+  reduceCompound,
 };

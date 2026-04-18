@@ -76,7 +76,7 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet })
     assertShape(b, { at: 'string', items: 'array' });
     let prevOrder = -Infinity;
     const validStatus = new Set(['ok', 'missing', 'degraded', 'unknown']);
-    const validKinds = new Set(['cmd', 'http', 'pm2', 'self']);
+    const validKinds = new Set(['cmd', 'http', 'pm2', 'self', 'fs', 'pip', 'compound']);
     for (const it of b.items) {
       assertShape(it, {
         order: 'number',
@@ -101,6 +101,30 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet })
     // The AI Dashboard self-entry must report "ok" (we're talking to it).
     const self = b.items.find((i) => (i.check && i.check.kind === 'self'));
     if (self && self.status !== 'ok') throw new Error('self-check not ok: ' + self.detail);
+  });
+
+  // --- Phase B additions ---------------------------------------------------
+
+  await record('Ollama is gone from /api/software', async () => {
+    const r = await httpGet(host, port, '/api/software');
+    if (r.body.items.some((it) => /ollama/i.test(it.name))) throw new Error('Ollama still listed');
+  });
+
+  await record('LM Studio uses compound check', async () => {
+    const r = await httpGet(host, port, '/api/software');
+    const lm = r.body.items.find((it) => /lm[-_ ]?studio/i.test(it.name));
+    if (!lm) throw new Error('LM Studio missing');
+    if (lm.check.kind !== 'compound') throw new Error('expected compound check, got ' + lm.check.kind);
+    if (!['ok', 'degraded', 'missing'].includes(lm.status)) throw new Error('unexpected status ' + lm.status);
+  });
+
+  await record('Mempalace and Graph RAG no longer use HTTP checks', async () => {
+    const r = await httpGet(host, port, '/api/software');
+    for (const name of ['Mempalace', 'Graph RAG']) {
+      const it = r.body.items.find((x) => x.name === name);
+      if (!it) throw new Error(name + ' missing');
+      if (it.check.kind === 'http') throw new Error(name + ' still uses http check; expected pip or fs');
+    }
   });
 }
 

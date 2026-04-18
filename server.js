@@ -50,7 +50,7 @@ function fetchUrl(targetUrl, depth = 0) {
   });
 }
 
-const PORT          = 7788;
+const PORT          = process.env.PORT ? Number(process.env.PORT) : 7788;
 const POLL_INTERVAL = 5 * 60 * 1000;
 const LOG_LINES     = 150;
 
