@@ -106,6 +106,29 @@ function checkShape(path, body) {
 
   function httpGet(h, p, pathname) { return get(pathname); }
 
+  function httpPostJson(h, p, pathname, body) {
+    return new Promise(resolve => {
+      const payload = JSON.stringify(body || {});
+      const req = http.request(
+        { host: h, port: p, path: pathname, method: 'POST', timeout: 4000,
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } },
+        res => {
+          let d = '';
+          res.on('data', c => d += c);
+          res.on('end', () => {
+            let parsed = null;
+            try { parsed = JSON.parse(d); } catch {}
+            resolve({ status: res.statusCode, body: parsed, raw: d });
+          });
+        }
+      );
+      req.on('error',   e => resolve({ error: e.message }));
+      req.on('timeout', () => { req.destroy(); resolve({ error: 'timeout' }); });
+      req.write(payload);
+      req.end();
+    });
+  }
+
   function assertShape(obj, shape, _path) {
     _path = _path || '';
     for (const [k, expected] of Object.entries(shape)) {
@@ -141,7 +164,7 @@ function checkShape(path, body) {
 
   // Principle #9 contract checks
   const runP9 = require('./smoke_test_principle9.patch');
-  await runP9({ host, port, assertShape, record, httpGet });
+  await runP9({ host, port, assertShape, record, httpGet, httpPostJson });
 
   console.log('\n=== AI Dashboard Regression Smoke Test ===');
   lines.forEach(l => console.log(l));

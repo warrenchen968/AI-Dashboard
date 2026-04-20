@@ -371,8 +371,8 @@ function getSkills() {
 // ─── Services definition ──────────────────────────────────────────────────────
 function getServicesDefinition() {
   return [
-    { id:'whatsapp-bridge', name:'WhatsApp Bridge', type:'pm2',      icon:'📱', description:'WhatsApp ↔ X bridge',     pm2Name:'whatsapp-bridge' },
-    { id:'wechat-bridge',   name:'WeChat Bridge',   type:'pm2',      icon:'💬', description:'WeChat ↔ X bridge',       pm2Name:'wechat-bridge'   },
+    { id:'whatsapp-bridge', name:'WhatsApp Bridge', type:'pm2',      icon:'📱', description:'WhatsApp ↔ X bridge',     pm2Name:'whatsapp-bridge', script:`${BASE}\\whatsapp-bridge\\bridge.js`,           cwd:`${BASE}\\whatsapp-bridge` },
+    { id:'wechat-bridge',   name:'WeChat Bridge',   type:'pm2',      icon:'💬', description:'WeChat ↔ X bridge',       pm2Name:'wechat-bridge',   script:`${BASE}\\wechat-bridge\\bridge.js`,             cwd:`${BASE}\\wechat-bridge` },
     { id:'lmstudio',        name:'LM Studio',       type:'external', icon:'🧠', description:'Local LLM server',        checkUrl:'http://localhost:1234/v1/models' },
     { id:'mempalace',       name:'MemPalace',        type:'cli',      icon:'🏛', description:'Long-term memory CLI',    cmd:MP_CMD },
     { id:'graph-rag',       name:'Graph RAG',        type:'db',       icon:'🕸', description:'Knowledge graph',         dbPath:PATHS.graphDB },
@@ -443,11 +443,29 @@ function getConvStats() {
 }
 
 // ─── Process control ──────────────────────────────────────────────────────────
+const PM2_SCRIPTS = {
+  'whatsapp-bridge': { script:`${BASE}\\whatsapp-bridge\\bridge.js`, cwd:`${BASE}\\whatsapp-bridge` },
+  'wechat-bridge':   { script:`${BASE}\\wechat-bridge\\bridge.js`,   cwd:`${BASE}\\wechat-bridge`   },
+  'ai-dashboard':    { script:`${BASE}\\dashboard\\AI-Dashboard\\server.js`, cwd:`${BASE}\\dashboard\\AI-Dashboard` },
+};
 async function controlProcess(action, target) {
   const allowed = ['whatsapp-bridge','wechat-bridge','ai-dashboard','memory-miner','all'];
   if (!['start','stop','restart','reload'].includes(action)) throw new Error('Invalid action');
   if (!allowed.includes(target)) throw new Error('Not whitelisted: '+target);
-  const {stdout,stderr} = await silent(`pm2 ${action} ${target}`);
+  let cmd;
+  if (action === 'start' && PM2_SCRIPTS[target]) {
+    const pm2List = cachedStatus?.processes || [];
+    const existing = pm2List.find(p => p.name === target);
+    if (existing) {
+      cmd = `pm2 restart "${target}"`;
+    } else {
+      const { script, cwd } = PM2_SCRIPTS[target];
+      cmd = `pm2 start "${script}" --name "${target}"${cwd ? ` --cwd "${cwd}"` : ''}`;
+    }
+  } else {
+    cmd = `pm2 ${action} "${target}"`;
+  }
+  const {stdout,stderr} = await silent(cmd);
   await poll();
   return { ok:true, output:stdout+stderr };
 }
@@ -539,6 +557,9 @@ const readBody = req => new Promise((res,rej) => {
   let b=''; req.on('data',d=>b+=d);
   req.on('end',()=>{ try{res(JSON.parse(b||'{}'))}catch(e){rej(e)}; });
 });
+
+// ─── External service helpers (Phase D) ──────────────────────────────────────
+const { buildLmStudioService } = require('./services-external');
 
 // ─── Principle #9 panels (Compute / Skills / Software) ───────────────────────
 const { _internals: p9 } = require('./principle9-routes');
@@ -701,7 +722,8 @@ print(json.dumps(get_recent_documents(20)))
 
     // ── Services ─────────────────────────────────────────────────────────────
     if (url==='/api/services') {
-      const defs = getServicesDefinition();
+      // Filter out LM Studio — it gets its own synthetic entry from buildLmStudioService().
+      const defs = getServicesDefinition().filter(s => s.id !== 'lmstudio');
       const pm2  = cachedStatus?.processes || [];
       const enriched = defs.map(svc => {
         let online = false, status = 'unknown';
@@ -712,16 +734,17 @@ print(json.dumps(get_recent_documents(20)))
           online=fs.existsSync(svc.dbPath||''); status=online?'online':'no-db';
         } else if (svc.type==='self') {
           online=true; status='online';
-        } else if (svc.type==='external') {
-          online=cachedStatus?.lmstudio?.online??false;
-          status=online?'online':'offline';
         } else if (svc.type==='cli') {
           online=cachedStatus?.mempalace?.online??false;
           status=online?'online':'offline';
         }
-        return { ...svc, online, status };
+        // kind and controllable: Phase D additions (strictly additive).
+        // 'pm2' and 'self' types are PM2-managed; dashboard can start/stop them.
+        const controllable = svc.type === 'pm2' || svc.type === 'self';
+        return { ...svc, online, status, kind: controllable ? 'pm2' : 'external', controllable };
       });
-      json(enriched); return;
+      const lmEntry = await buildLmStudioService();
+      json([...enriched, lmEntry]); return;
     }
 
     if (url.startsWith('/api/services/') && req.method==='POST') {
@@ -729,9 +752,26 @@ print(json.dumps(get_recent_documents(20)))
       const svcId  = parts[3];
       const action = parts[4]; // start|stop|restart
       if (!['start','stop','restart'].includes(action)) { json({error:'Invalid action'},400); return; }
-      const pm2Name = svcId; // pm2 process name matches service id for bridges
+      // Allowlist: only PM2-managed services accept start/stop/restart.
+      const ALLOWED_SVC = new Set(['ai-dashboard', 'whatsapp-bridge', 'wechat-bridge', 'memory-miner']);
+      if (!ALLOWED_SVC.has(svcId)) { json({error:'unknown service', name:svcId}, 400); return; }
+      const svcDef  = getServicesDefinition().find(s => s.id === svcId);
+      const pm2Name = svcDef?.pm2Name || svcId;
       try {
-        const { stdout } = await silent(`pm2 ${action} ${pm2Name}`);
+        let cmd;
+        if (action === 'start' && svcDef?.script) {
+          // Check if the process is already registered in PM2
+          const pm2List = cachedStatus?.processes || [];
+          const existing = pm2List.find(p => p.name === pm2Name);
+          if (existing) {
+            cmd = `pm2 restart "${pm2Name}"`;
+          } else {
+            cmd = `pm2 start "${svcDef.script}" --name "${pm2Name}"${svcDef.cwd ? ` --cwd "${svcDef.cwd}"` : ''}`;
+          }
+        } else {
+          cmd = `pm2 ${action} "${pm2Name}"`;
+        }
+        const { stdout } = await silent(cmd);
         await poll();
         json({ ok:true, output:stdout });
       } catch(e) { json({ok:false, error:e.message}); }

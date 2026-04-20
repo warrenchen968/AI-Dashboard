@@ -17,7 +17,7 @@
 
 'use strict';
 
-async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet }) {
+async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet, httpPostJson }) {
   // --- /api/compute ---------------------------------------------------------
   await record('GET /api/compute returns cpu/ram/gpu/disks/uptimeSec', async () => {
     const r = await httpGet(host, port, '/api/compute');
@@ -125,6 +125,60 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet })
       if (!it) throw new Error(name + ' missing');
       if (it.check.kind === 'http') throw new Error(name + ' still uses http check; expected pip or fs');
     }
+  });
+  // --- Phase C additions ---------------------------------------------------
+
+  await record('whatsapp-bridge appears in /api/services', async () => {
+    const r = await httpGet(host, port, '/api/services');
+    if (!r.body.find(s => s.id === 'whatsapp-bridge'))
+      throw new Error('whatsapp-bridge missing from /api/services');
+  });
+
+  await record('wechat-bridge appears in /api/services and is not online', async () => {
+    const r = await httpGet(host, port, '/api/services');
+    const w = r.body.find(s => s.id === 'wechat-bridge');
+    if (!w) throw new Error('wechat-bridge missing from /api/services');
+    if (w.status === 'online') throw new Error('wechat-bridge should default to stopped (issue #6)');
+  });
+
+  await record('start/stop endpoints reject unknown service', async () => {
+    const r = await httpPostJson(host, port, '/api/services/notarealthing/start', {});
+    if (r.status !== 400) throw new Error('expected 400, got ' + r.status);
+  });
+
+  // --- Phase D additions ---------------------------------------------------
+
+  await record('GET /api/services includes LM Studio as external', async () => {
+    const r = await httpGet(host, port, '/api/services');
+    const lm = r.body.find(s => /lm[-_ ]?studio/i.test(s.name));
+    if (!lm) throw new Error('LM Studio missing from /api/services');
+    if (lm.kind !== 'external') throw new Error('kind: ' + lm.kind);
+    if (lm.controllable !== false) throw new Error('controllable should be false');
+    if (!lm.extras || typeof lm.extras !== 'object') throw new Error('extras missing');
+    if (!Array.isArray(lm.extras.models)) throw new Error('extras.models not array');
+    if (!('loadedModelId' in lm.extras)) throw new Error('extras.loadedModelId missing');
+  });
+
+  await record('PM2 services have kind="pm2" and controllable=true', async () => {
+    const r = await httpGet(host, port, '/api/services');
+    // Lookup by id; name field has display casing ('AI Dashboard', 'WhatsApp Bridge', etc.)
+    for (const id of ['ai-dashboard', 'whatsapp-bridge', 'wechat-bridge']) {
+      const s = r.body.find(x => x.id === id);
+      if (!s) throw new Error(id + ' missing from /api/services');
+      if (s.kind !== 'pm2') throw new Error(id + ' kind: ' + s.kind);
+      if (s.controllable !== true) throw new Error(id + ' should be controllable');
+    }
+  });
+
+  await record('LM Studio models list consistent with loadedModelId', async () => {
+    const r = await httpGet(host, port, '/api/services');
+    const lm = r.body.find(s => /lm[-_ ]?studio/i.test(s.name));
+    const loaded = lm.extras.models.filter(m => m.loaded);
+    if (loaded.length > 1) throw new Error('>1 model marked loaded');
+    if (loaded.length === 1 && loaded[0].id !== lm.extras.loadedModelId)
+      throw new Error('loaded flag disagrees with loadedModelId');
+    if (loaded.length === 0 && lm.extras.loadedModelId !== null)
+      throw new Error('loadedModelId set but no model flagged loaded');
   });
 }
 

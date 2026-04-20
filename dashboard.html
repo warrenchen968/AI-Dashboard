@@ -126,6 +126,18 @@ tr:last-child td{border-bottom:none}
 .svc-actions{display:flex;gap:6px}
 .svc-meta{font-size:10px;color:var(--text3)}
 
+/* Services — Phase D additions (namespaced .svc-ext-* to avoid collisions) */
+.svc-kind-badge{font-size:9px;padding:1px 5px;border-radius:2px;font-weight:600;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+.svc-kind-pm2{background:rgba(100,180,255,.1);color:#66aaff;border:1px solid rgba(100,180,255,.2)}
+.svc-kind-ext{background:rgba(255,165,0,.1);color:#ffaa44;border:1px solid rgba(255,165,0,.25)}
+.svc-ext-toggle{background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:2px 0;text-align:left;width:100%}
+.svc-ext-toggle:hover{color:var(--text)}
+.svc-ext-panel{margin-top:6px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:10px;display:flex;flex-direction:column;gap:3px}
+.svc-ext-model{color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc-ext-loaded{color:var(--green);font-weight:600}
+.svc-ext-baseurl{font-family:var(--mono);font-size:9px;color:var(--text3);word-break:break-all;margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
+.svc-ext-offline-msg{color:var(--text3);font-style:italic}
+
 /* Graph RAG */
 .subj-list{display:flex;flex-direction:column;gap:5px}
 .subj-row{display:flex;align-items:center;gap:10px;font-size:11px;cursor:pointer;
@@ -1368,6 +1380,18 @@ function renderOvSvcList(svcs) {
 }
 
 // ── Services page ──────────────────────────────────────────────────────────
+// In-memory map: tracks which external-service sub-panels are expanded.
+// sessionStorage not used intentionally (matches dashboard's existing style).
+const svcExtExpanded = {};
+
+function toggleSvcExt(id) {
+  svcExtExpanded[id] = !svcExtExpanded[id];
+  const panel = document.getElementById('svc-ext-panel-' + id);
+  const btn   = document.getElementById('svc-ext-btn-'   + id);
+  if (panel) panel.style.display = svcExtExpanded[id] ? 'flex' : 'none';
+  if (btn)   btn.textContent     = (svcExtExpanded[id] ? '▾' : '▸') + btn.textContent.slice(1);
+}
+
 async function loadServices() {
   const d = await api('/api/services');
   const grid = document.getElementById('svc-grid');
@@ -1386,14 +1410,60 @@ async function loadServices() {
   }
 
   grid.innerHTML = services.map(s => {
-    const badge = s.status==='online' ? 'svc-online'
+    const badge = s.status==='online'   ? 'svc-online'
                 : s.status==='starting' ? 'svc-starting' : 'svc-offline';
-    const canControl = s.type === 'pm2';  // Only pm2 services support start/stop/restart
+
+    // controllable: use new field if present, fall back to legacy type check.
+    const controllable = s.controllable !== undefined ? s.controllable : (s.type === 'pm2');
+    const btnDis = !controllable
+      ? 'disabled title="controlled externally — use the app itself"'
+      : '';
+
+    // Kind badge (Phase D): PM2 vs External.
+    const kindLabel = s.kind === 'external' ? 'External' : (s.kind === 'pm2' ? 'PM2' : '');
+    const kindClass = s.kind === 'external' ? 'svc-kind-ext' : 'svc-kind-pm2';
+    const kindBadge = kindLabel
+      ? `<span class="svc-kind-badge ${kindClass}">${kindLabel}</span>`
+      : '';
+
+    // Expandable model sub-panel for external services with extras.models.
+    let extPanel = '';
+    if (s.kind === 'external' && s.extras && Array.isArray(s.extras.models)) {
+      const models   = s.extras.models;
+      const expanded = !!svcExtExpanded[s.id];
+      const count    = models.length;
+      let rows;
+      if (s.status === 'offline') {
+        rows = `<div class="svc-ext-offline-msg">Start the server in LM Studio to see models.</div>`;
+      } else if (count === 0) {
+        rows = `<div class="svc-ext-model">No models loaded.</div>`;
+      } else {
+        rows = models.map(m => {
+          const dot   = m.loaded ? '●' : '○';
+          const cls   = m.loaded ? 'svc-ext-model svc-ext-loaded' : 'svc-ext-model';
+          const size  = m.sizeBytes     ? ' · ' + (m.sizeBytes / 1e9).toFixed(1) + ' GB' : '';
+          const ctx   = m.contextLength ? ' · ctx ' + m.contextLength              : '';
+          const fam   = m.family        ? ' · ' + esc(m.family)                    : '';
+          return `<div class="${cls}">${dot} ${esc(m.id)}${size}${ctx}${fam}</div>`;
+        }).join('');
+      }
+      const baseUrl = s.extras.baseUrl ? `<div class="svc-ext-baseurl">${esc(s.extras.baseUrl)}</div>` : '';
+      extPanel = `
+        <button class="svc-ext-toggle" id="svc-ext-btn-${esc(s.id)}"
+                onclick="toggleSvcExt('${esc(s.id)}')">
+          ${expanded ? '▾' : '▸'} Models${count ? ' (' + count + ')' : ''}
+        </button>
+        <div class="svc-ext-panel" id="svc-ext-panel-${esc(s.id)}"
+             style="display:${expanded ? 'flex' : 'none'}">
+          ${rows}${baseUrl}
+        </div>`;
+    }
+
     return `
       <div class="svc-card">
         <div class="svc-head">
           <div>
-            <div class="svc-name">${s.icon||''} ${esc(s.name)}</div>
+            <div class="svc-name">${s.icon||''} ${esc(s.name)}${kindBadge}</div>
             <div class="svc-type">${esc(s.type || 'service')}</div>
           </div>
           <span class="svc-badge ${badge}">${esc(s.status||'unknown')}</span>
@@ -1401,10 +1471,11 @@ async function loadServices() {
         <div class="svc-meta">${esc(s.description || '')}</div>
         ${s.port ? `<div class="svc-meta">Port: ${s.port}</div>` : ''}
         <div class="svc-actions">
-          <button class="btn success" onclick="svcControl('${esc(s.id)}','start')"  ${canControl?'':'disabled'}>Start</button>
-          <button class="btn danger"  onclick="svcControl('${esc(s.id)}','stop')"   ${canControl?'':'disabled'}>Stop</button>
-          <button class="btn warn"    onclick="svcControl('${esc(s.id)}','restart')" ${canControl?'':'disabled'}>Restart</button>
+          <button class="btn success" onclick="svcControl('${esc(s.id)}','start')"   ${btnDis}>Start</button>
+          <button class="btn danger"  onclick="svcControl('${esc(s.id)}','stop')"    ${btnDis}>Stop</button>
+          <button class="btn warn"    onclick="svcControl('${esc(s.id)}','restart')" ${btnDis}>Restart</button>
         </div>
+        ${extPanel}
       </div>`;
   }).join('');
 }
