@@ -95,6 +95,15 @@
 **Phase E note — subjects vs topics:**
 The current schema has a hardcoded `subject` column with fixed keyword values (`technology`, `science`, `history`, `business`, `personal`, `health`, `news`, `research`, `conversation`, `tasks`, `general`). These are auto-classified by keyword matching, NOT user-created topics. Phase E's "knowledge topic" feature will need to add a proper user-defined topic system — either a new `topics` table or a `metadata_json` tag on documents. No structural change is needed for Phase B.
 
+> ⚠️ Discovery correction — 2026-04-20
+>
+> Phase E.1 found that the live `graph_rag.db` does NOT have the
+> `subject` column described in the original Phase A discovery.
+> The source code defines it, but the ALTER TABLE migration was
+> never applied against the live file. The DB is also empty
+> (0 rows across all tables), so Phase E.2 can evolve the schema
+> freely with no backfill. See GRAPHRAG_KB_BEST_PRACTICES.md §1.
+
 ---
 
 ## A.5 — WhatsApp Bridge
