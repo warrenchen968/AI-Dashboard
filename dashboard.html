@@ -138,15 +138,65 @@ tr:last-child td{border-bottom:none}
 .svc-ext-baseurl{font-family:var(--mono);font-size:9px;color:var(--text3);word-break:break-all;margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
 .svc-ext-offline-msg{color:var(--text3);font-style:italic}
 
-/* Graph RAG */
+/* Graph RAG — Phase E.2 (gr-* namespace) */
+.gr-tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:0}
+.gr-tab{padding:6px 16px;font-size:11px;color:var(--text3);cursor:pointer;border-radius:var(--r) var(--r) 0 0;
+        border:1px solid transparent;border-bottom:none;transition:all .15s;margin-bottom:-1px}
+.gr-tab:hover{color:var(--text);background:var(--bg2)}
+.gr-tab.active{color:var(--cyan);background:var(--bg2);border-color:var(--border)}
+.gr-pane{display:none}.gr-pane.active{display:flex;flex-direction:column;gap:12px}
+.gr-browse{display:grid;grid-template-columns:220px 1fr;gap:12px;min-height:400px}
+.gr-sidebar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+            padding:10px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:560px}
+.gr-sidebar-head{font-size:9px;letter-spacing:.8px;text-transform:uppercase;
+                 color:var(--text3);padding:4px 8px 8px;border-bottom:1px solid var(--border)}
+.gr-topic-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);
+              cursor:pointer;transition:background .1s;font-size:11px}
+.gr-topic-row:hover{background:var(--border)}
+.gr-topic-row.active{background:var(--cyan2);color:var(--cyan)}
+.gr-topic-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-topic-badge{font-size:9px;background:var(--border);border-radius:10px;
+                padding:1px 6px;color:var(--text3)}
+.gr-topic-row.active .gr-topic-badge{background:var(--cyan2);color:var(--cyan)}
+.gr-main{display:flex;flex-direction:column;gap:10px}
+.gr-main-head{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text2)}
+.gr-source-list{display:flex;flex-direction:column;gap:6px}
+.gr-source-item{padding:9px 12px;background:var(--bg2);border:1px solid var(--border);
+                border-radius:var(--r);display:flex;align-items:center;gap:10px}
+.gr-source-icon{font-size:15px;color:var(--text3)}
+.gr-source-info{flex:1;min-width:0}
+.gr-source-title{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-source-meta{font-size:9px;color:var(--text3);margin-top:2px}
+.gr-type-badge{font-size:9px;padding:1px 6px;border-radius:8px;
+               background:var(--border);color:var(--text3);white-space:nowrap}
+/* Ingest sub-tab */
+.gr-form{display:flex;flex-direction:column;gap:12px;max-width:640px}
+.gr-label{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.gr-type-radios{display:flex;gap:16px;font-size:11px;color:var(--text2)}
+.gr-type-radios label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.gr-chip-area{min-height:36px;background:var(--bg2);border:1px solid var(--border2);
+              border-radius:var(--r);padding:4px 8px;display:flex;flex-wrap:wrap;gap:6px;
+              align-items:center;cursor:text;transition:border-color .15s}
+.gr-chip-area:focus-within{border-color:var(--cyan)}
+.gr-chip{background:var(--cyan2);color:var(--cyan);border-radius:10px;
+         padding:2px 10px;font-size:10px;display:flex;align-items:center;gap:4px}
+.gr-chip-x{cursor:pointer;opacity:.7;font-size:12px;line-height:1}.gr-chip-x:hover{opacity:1}
+.gr-chip-input{background:none;border:none;outline:none;color:var(--text);
+               font-size:11px;flex:1;min-width:80px;padding:2px 0}
+.gr-topic-dropdown{position:absolute;background:var(--bg2);border:1px solid var(--border2);
+                   border-radius:var(--r);z-index:100;max-height:160px;overflow-y:auto;
+                   font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.gr-topic-opt{padding:6px 12px;cursor:pointer;color:var(--text2)}
+.gr-topic-opt:hover{background:var(--border);color:var(--text)}
+.gr-spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);
+            border-top-color:var(--cyan);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gr-success{background:var(--bg2);border:1px solid var(--green);border-radius:var(--r);
+            padding:10px 14px;color:var(--green);font-size:11px}
+.gr-error{background:var(--bg2);border:1px solid var(--red);border-radius:var(--r);
+          padding:10px 14px;color:var(--red);font-size:11px}
+/* legacy subject selectors (kept for old JS compatibility) */
 .subj-list{display:flex;flex-direction:column;gap:5px}
-.subj-row{display:flex;align-items:center;gap:10px;font-size:11px;cursor:pointer;
-          padding:5px 8px;border-radius:var(--r);transition:background .1s}
-.subj-row:hover{background:var(--bg2)}
-.subj-name{width:90px;color:var(--text2);text-transform:capitalize}
-.subj-bar-wrap{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
-.subj-bar{height:100%;border-radius:3px;transition:width .6s}
-.subj-count{width:50px;text-align:right;color:var(--text3);font-size:10px}
 .search-row{display:flex;gap:8px;margin-bottom:12px}
 input,select,textarea{font-family:var(--mono);background:var(--bg2);border:1px solid var(--border2);
   color:var(--text);padding:6px 10px;border-radius:var(--r);font-size:11px;outline:none;
@@ -400,106 +450,76 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:14px 0}
 
     <!-- ══════════════ GRAPH RAG ══════════════ -->
     <div class="page" id="p-graphrag">
-      <div class="stat-row">
-        <div class="stat-card">
-          <div class="stat-lbl">Entities</div>
-          <div class="stat-num" id="gr-ents">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-lbl">Relations</div>
-          <div class="stat-num o" id="gr-rels">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-lbl">Documents</div>
-          <div class="stat-num g" id="gr-docs">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-lbl">Chunks</div>
-          <div class="stat-num" style="color:var(--purple)" id="gr-chunks">—</div>
-        </div>
+
+      <!-- Sub-tab bar -->
+      <div class="gr-tabs">
+        <div class="gr-tab active" id="gr-tab-browse" onclick="grSwitchTab('browse')">Browse</div>
+        <div class="gr-tab"        id="gr-tab-ingest" onclick="grSwitchTab('ingest')">Ingest</div>
+        <button class="btn" style="margin-left:auto;font-size:10px" onclick="grLoadTopics()">Refresh</button>
       </div>
 
-      <div class="two-col">
-        <!-- Left: Subjects + Search -->
-        <div>
-          <div class="card" style="margin-bottom:14px">
-            <div class="card-head"><span class="card-title">Subject Distribution</span></div>
-            <div class="card-body">
-              <div class="subj-list" id="subj-list"><div class="empty">Loading…</div></div>
-            </div>
+      <!-- BROWSE sub-tab -->
+      <div class="gr-pane active" id="gr-pane-browse">
+        <div class="gr-browse">
+          <!-- Left: topic sidebar -->
+          <div class="gr-sidebar">
+            <div class="gr-sidebar-head">Topics</div>
+            <div id="gr-topic-list"><div class="empty" style="font-size:10px;padding:8px">Loading…</div></div>
           </div>
-
-          <div class="card">
-            <div class="card-head"><span class="card-title">Search Knowledge</span></div>
-            <div class="card-body">
-              <div class="search-row">
-                <input id="gr-query" placeholder="Search entities, chunks…" onkeydown="if(event.key==='Enter')grSearch()">
-                <select id="gr-subj"><option value="">All subjects</option></select>
-                <button class="btn primary" onclick="grSearch()">Search</button>
-              </div>
-              <div id="gr-results" class="search-results"><div class="empty">Enter a query above</div></div>
+          <!-- Right: sources panel -->
+          <div class="gr-main" id="gr-main-panel">
+            <div class="gr-main-head" id="gr-main-head" style="color:var(--text3)">
+              Pick a topic on the left to view its sources.
             </div>
-          </div>
-        </div>
-
-        <!-- Right: Ingest -->
-        <div>
-          <div class="card" style="margin-bottom:14px">
-            <div class="card-head"><span class="card-title">Upload Files</span></div>
-            <div class="card-body">
-              <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()"
-                   ondragover="event.preventDefault();this.classList.add('drag')"
-                   ondragleave="this.classList.remove('drag')"
-                   ondrop="handleDrop(event)">
-                <div class="dropzone-icon">📂</div>
-                <div class="dropzone-label">Click to select or drag &amp; drop files</div>
-                <div class="dropzone-sub">.txt · .md · .json · .pdf supported</div>
-              </div>
-              <input type="file" id="file-input" multiple style="display:none" onchange="uploadFiles(this.files)">
-              <div id="upload-status"></div>
-            </div>
-          </div>
-
-          <div class="card" style="margin-bottom:14px">
-            <div class="card-head"><span class="card-title">Ingest URL</span></div>
-            <div class="card-body">
-              <div class="search-row">
-                <input id="url-input" placeholder="https://…" type="url">
-                <button class="btn primary" onclick="ingestURL()">Fetch</button>
-              </div>
-              <div id="url-status"></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-head"><span class="card-title">Paste Text</span></div>
-            <div class="card-body">
-              <input id="paste-title" placeholder="Title / label" style="margin-bottom:8px;width:100%">
-              <textarea id="paste-text" placeholder="Paste document content…" style="margin-bottom:8px"></textarea>
-              <div class="flex-row">
-                <select id="paste-subj" style="flex:1">
-                  <option value="">Auto-detect subject</option>
-                  <option>technology</option><option>science</option><option>history</option>
-                  <option>business</option><option>personal</option><option>health</option>
-                  <option>news</option><option>research</option><option>conversation</option>
-                  <option>tasks</option><option>general</option>
-                </select>
-                <button class="btn primary" onclick="ingestPasted()">Ingest</button>
-              </div>
-              <div id="paste-status" style="margin-top:8px"></div>
-            </div>
+            <div class="gr-source-list" id="gr-source-list"></div>
           </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-head">
-          <span class="card-title">Recent Documents</span>
-          <button class="btn" onclick="loadRecentDocs()">Refresh</button>
-        </div>
-        <div class="card-body" style="padding:0">
-          <div id="recent-docs" style="padding:10px">
-            <div class="empty">Loading…</div>
+      <!-- INGEST sub-tab -->
+      <div class="gr-pane" id="gr-pane-ingest">
+        <div class="gr-form">
+          <!-- Source type -->
+          <div>
+            <div class="gr-label">Source type</div>
+            <div class="gr-type-radios">
+              <label><input type="radio" name="gr-src-type" value="text" checked onchange="grToggleSource()"> Paste text</label>
+              <label><input type="radio" name="gr-src-type" value="file"              onchange="grToggleSource()"> File path</label>
+            </div>
+          </div>
+
+          <!-- Text input -->
+          <div id="gr-text-area">
+            <div class="gr-label">Content <span style="color:var(--red)">*</span></div>
+            <textarea id="gr-paste-text" placeholder="Paste document content here…" style="min-height:120px;width:100%"></textarea>
+          </div>
+
+          <!-- File path input -->
+          <div id="gr-file-area" style="display:none">
+            <div class="gr-label">File path (server-readable) <span style="color:var(--red)">*</span></div>
+            <input id="gr-file-path" placeholder="D:\AIAssist\…\document.md" style="width:100%">
+          </div>
+
+          <!-- Topics picker -->
+          <div style="position:relative">
+            <div class="gr-label">Topics <span style="color:var(--red)">*</span> <span style="font-weight:normal;text-transform:none;letter-spacing:0;font-size:10px;color:var(--text3)">(required — type and press Enter to add)</span></div>
+            <div class="gr-chip-area" id="gr-chip-area" onclick="document.getElementById('gr-topic-input').focus()">
+              <input id="gr-topic-input" class="gr-chip-input" placeholder="Add topic…"
+                     onkeydown="grTopicKeydown(event)" oninput="grTopicFilter(this.value)" autocomplete="off">
+            </div>
+            <div class="gr-topic-dropdown" id="gr-topic-dd" style="display:none;width:100%"></div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <div class="gr-label">Notes <span style="color:var(--text3);font-weight:normal;text-transform:none;letter-spacing:0">(optional)</span></div>
+            <input id="gr-notes" placeholder="Source, date, context…" style="width:100%">
+          </div>
+
+          <!-- Submit -->
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="btn primary" id="gr-submit-btn" onclick="grSubmitIngest()" disabled>Ingest</button>
+            <div id="gr-ingest-status" style="font-size:11px"></div>
           </div>
         </div>
       </div>
@@ -1488,162 +1508,188 @@ async function svcControl(id, action) {
   setTimeout(loadServices, 1500);
 }
 
-// ── Graph RAG ──────────────────────────────────────────────────────────────
+// ── Graph RAG (Phase E.2) ───────────────────────────────────────────────────
+let grTopics = [];           // [{name, count, createdAt}]
+let grActiveTopic = null;    // currently selected topic name
+let grSelectedTopics = [];   // chips in the ingest form
+
+function grSwitchTab(tab) {
+  ['browse','ingest'].forEach(t => {
+    document.getElementById('gr-tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('gr-pane-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab === 'browse' && !grTopics.length) grLoadTopics();
+}
+
 async function loadGraphRAG() {
-  // Stats — server returns fields at top level: {online, entities, relations, documents, chunks, subjects}
-  const s = await api('/api/graphrag/stats');
-  if (s && !s.error) {
-    setText('gr-ents',   fmt(s.entities));
-    setText('gr-rels',   fmt(s.relations));
-    setText('gr-docs',   fmt(s.documents));
-    setText('gr-chunks', fmt(s.chunks));
-  }
-  // Subjects
-  const sub = await api('/api/graphrag/subjects');
-  if (sub && !sub.error && Array.isArray(sub.subjects)) renderSubjects(sub.subjects);
-  // Populate subject filter dropdown
-  const sel = document.getElementById('gr-subj');
-  if (sel) {
-    sel.innerHTML = '<option value="">All subjects</option>' +
-      SUBJECTS.map(s => `<option>${s}</option>`).join('');
-  }
+  await grLoadTopics();
 }
 
-function renderSubjects(subjects) {
-  const list = document.getElementById('subj-list');
+async function grLoadTopics() {
+  const data = await api('/api/graphrag/topics');
+  if (data.error) return;
+  grTopics = data.topics || [];
+  grRenderSidebar();
+}
+
+function grRenderSidebar() {
+  const list = document.getElementById('gr-topic-list');
   if (!list) return;
-  if (!subjects.length) { list.innerHTML = '<div class="empty">No subjects yet</div>'; return; }
-  const maxEnt = Math.max(...subjects.map(s => s.entities || 0), 1);
-  list.innerHTML = subjects.map(s => `
-    <div class="subj-row" onclick="filterBySubject('${s.subject}')">
-      <span class="subj-name">${s.subject}</span>
-      <div class="subj-bar-wrap">
-        <div class="subj-bar" style="width:${((s.entities||0)/maxEnt*100).toFixed(0)}%;background:${SUBJ_COLORS[s.subject]||'#7a9ab2'}"></div>
-      </div>
-      <span class="subj-count">${s.entities||0}e ${s.documents||0}d</span>
+  if (!grTopics.length) {
+    list.innerHTML = '<div class="empty" style="font-size:10px;padding:8px">No topics yet. Use the Ingest tab.</div>';
+    return;
+  }
+  list.innerHTML = grTopics.map(t => `
+    <div class="gr-topic-row${grActiveTopic===t.name?' active':''}" onclick="grSelectTopic(${JSON.stringify(t.name)})">
+      <span class="gr-topic-name">${esc(t.name)}</span>
+      <span class="gr-topic-badge">${t.count}</span>
     </div>`).join('');
 }
 
-function filterBySubject(subj) {
-  const sel = document.getElementById('gr-subj');
-  const q = document.getElementById('gr-query');
-  if (sel) sel.value = subj;
-  if (q && !q.value) q.value = subj;
-  grSearch();
-}
+async function grSelectTopic(name) {
+  grActiveTopic = name;
+  grRenderSidebar();
+  const head = document.getElementById('gr-main-head');
+  const srcList = document.getElementById('gr-source-list');
+  if (head) head.innerHTML = `<span style="color:var(--text)">${esc(name)}</span><span style="color:var(--text3)">&nbsp;— ${grTopics.find(t=>t.name===name)?.count||0} source(s)</span>`;
+  if (srcList) srcList.innerHTML = '<div class="empty" style="font-size:10px">Loading…</div>';
 
-async function grSearch() {
-  const q = document.getElementById('gr-query').value.trim();
-  const subj = document.getElementById('gr-subj').value;
-  const res = document.getElementById('gr-results');
-  if (!q) { res.innerHTML = '<div class="empty">Enter a query above</div>'; return; }
-  res.innerHTML = '<div class="empty">Searching…</div>';
-  const url = `/api/graphrag/search?q=${encodeURIComponent(q)}${subj?'&subject='+subj:''}`;
-  const d = await api(url);
-  if (d.error) { res.innerHTML = `<div class="empty">Error: ${d.error}</div>`; return; }
-  const chunks = d.chunks || [];
-  const entities = d.entities || [];
-  if (!chunks.length && !entities.length) {
-    res.innerHTML = '<div class="empty">No results found</div>'; return;
-  }
-  let html = '';
-  entities.slice(0,3).forEach(e => {
-    html += `<div class="result-item">
-      <div class="result-title">⬡ ENTITY · ${e.type||'concept'} · <span style="color:${SUBJ_COLORS[e.subject]||'#7a9ab2'}">${e.subject}</span></div>
-      <div class="result-text"><strong>${e.name}</strong>${e.description?' — '+e.description:''}</div>
-    </div>`;
+  const data = await api('/api/graphrag/recent');
+  if (!srcList) return;
+  const docs = (data.documents || []).filter(d => {
+    // recent endpoint doesn't include topic filter — approximate by checking all
+    return true; // show all; topic-filtered endpoint deferred to E.3
   });
-  chunks.forEach(c => {
-    html += `<div class="result-item">
-      <div class="result-title">◈ CHUNK · ${c.title||'doc'} · <span style="color:${SUBJ_COLORS[c.subject]||'#7a9ab2'}">${c.subject||''}</span></div>
-      <div class="result-text">${esc(c.text||'').slice(0,300)}${(c.text||'').length>300?'…':''}</div>
-      <div class="result-meta">chunk ${c.chunk_index} · ${c.source||''}</div>
-    </div>`;
-  });
-  res.innerHTML = html;
-}
-
-async function loadRecentDocs() {
-  const d = await api('/api/graphrag/recent');
-  const el = document.getElementById('recent-docs');
-  if (!el) return;
-  if (d.error || !d.documents) {
-    el.innerHTML = `<div class="empty">Failed: ${d.error||'?'}</div>`; return;
-  }
-  if (!d.documents.length) { el.innerHTML = '<div class="empty">No documents yet</div>'; return; }
-  el.innerHTML = d.documents.map(doc => `
-    <div class="doc-item">
-      <div class="doc-icon">📄</div>
-      <div class="doc-info">
-        <div class="doc-title">${esc(doc.title)}</div>
-        <div class="doc-meta">${doc.chunk_count} chunks · ${doc.source||''} · ${doc.created_at?.slice(0,16)||''}</div>
+  if (!docs.length) { srcList.innerHTML = '<div class="empty" style="font-size:10px">No sources ingested yet.</div>'; return; }
+  srcList.innerHTML = docs.slice(0,20).map(doc => {
+    const icon = doc.type === 'conversation' ? '💬' : doc.type === 'document' ? '📄' : '📁';
+    return `<div class="gr-source-item">
+      <div class="gr-source-icon">${icon}</div>
+      <div class="gr-source-info">
+        <div class="gr-source-title">${esc(doc.title)}</div>
+        <div class="gr-source-meta">${doc.chunk_count||0} chunks · ${doc.source||''} · ${(doc.created_at||'').slice(0,16)}</div>
       </div>
-      <span class="doc-badge" style="color:${SUBJ_COLORS[doc.subject]||'#7a9ab2'}">${doc.subject}</span>
-    </div>`).join('');
+      <span class="gr-type-badge">${esc(doc.type||'document')}</span>
+    </div>`;
+  }).join('');
 }
 
-// ── File upload ────────────────────────────────────────────────────────────
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('dropzone').classList.remove('drag');
-  uploadFiles(e.dataTransfer.files);
+// ── Ingest form ─────────────────────────────────────────────────────────────
+function grToggleSource() {
+  const type = document.querySelector('input[name="gr-src-type"]:checked')?.value;
+  document.getElementById('gr-text-area').style.display = type==='text' ? '' : 'none';
+  document.getElementById('gr-file-area').style.display = type==='file' ? '' : 'none';
 }
 
-async function uploadFiles(files) {
-  if (!files || !files.length) return;
-  const statusEl = document.getElementById('upload-status');
-  statusEl.innerHTML = '<div class="empty">Uploading…</div>';
-  let ok = 0, fail = 0;
-  for (const file of files) {
-    const reader = new FileReader();
-    const b64 = await new Promise(res => {
-      reader.onload = e => res(e.target.result.split(',')[1]);
-      reader.readAsDataURL(file);
-    });
-    const d = await api('/api/graphrag/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: file.name, file_base64: b64, source: 'upload' })
-    });
-    if (d.error) { fail++; toast(`${file.name}: ${d.error}`, 'err'); }
-    else { ok++; toast(`${file.name}: ${d.chunks||0} chunks ingested`, 'ok'); }
+// Topic chips
+function grAddChip(name) {
+  name = name.trim();
+  if (!name || grSelectedTopics.includes(name)) return;
+  grSelectedTopics.push(name);
+  grRenderChips();
+  grUpdateSubmitBtn();
+  document.getElementById('gr-topic-input').value = '';
+  document.getElementById('gr-topic-dd').style.display = 'none';
+}
+
+function grRemoveChip(name) {
+  grSelectedTopics = grSelectedTopics.filter(t => t !== name);
+  grRenderChips();
+  grUpdateSubmitBtn();
+}
+
+function grRenderChips() {
+  const area = document.getElementById('gr-chip-area');
+  const input = document.getElementById('gr-topic-input');
+  // Remove existing chips (keep the input)
+  area.querySelectorAll('.gr-chip').forEach(c => c.remove());
+  grSelectedTopics.forEach(name => {
+    const chip = document.createElement('span');
+    chip.className = 'gr-chip';
+    chip.innerHTML = `${esc(name)}<span class="gr-chip-x" onclick="grRemoveChip(${JSON.stringify(name)})">×</span>`;
+    area.insertBefore(chip, input);
+  });
+}
+
+function grTopicKeydown(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val) grAddChip(val);
+  } else if (e.key === 'Escape') {
+    document.getElementById('gr-topic-dd').style.display = 'none';
   }
-  statusEl.innerHTML = `<div class="empty">${ok} succeeded, ${fail} failed</div>`;
-  loadRecentDocs();
 }
 
-async function ingestURL() {
-  const url = document.getElementById('url-input').value.trim();
-  const s = document.getElementById('url-status');
-  if (!url) { toast('Enter a URL first', 'err'); return; }
-  s.innerHTML = '<div class="empty">Fetching…</div>';
-  const d = await api('/api/graphrag/ingest-url', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url })
-  });
-  if (d.error) { s.innerHTML = `<div class="empty" style="color:var(--red)">${d.error}</div>`; return; }
-  s.innerHTML = `<div class="empty" style="color:var(--green)">Ingested: ${d.chunks||0} chunks — subject: ${d.subject||'?'}</div>`;
-  loadRecentDocs();
+function grTopicFilter(val) {
+  const dd = document.getElementById('gr-topic-dd');
+  const matches = grTopics.filter(t => t.name.toLowerCase().includes(val.toLowerCase()) && !grSelectedTopics.includes(t.name));
+  if (!val || !matches.length) { dd.style.display = 'none'; return; }
+  dd.style.display = 'block';
+  dd.innerHTML = matches.slice(0,8).map(t =>
+    `<div class="gr-topic-opt" onclick="grAddChip(${JSON.stringify(t.name)})">${esc(t.name)} <span style="color:var(--text3);font-size:9px">${t.count}</span></div>`
+  ).join('');
 }
 
-async function ingestPasted() {
-  const title = document.getElementById('paste-title').value.trim() || 'pasted-' + Date.now();
-  const content = document.getElementById('paste-text').value.trim();
-  const subject = document.getElementById('paste-subj').value;
-  const s = document.getElementById('paste-status');
-  if (!content) { toast('No content to ingest', 'err'); return; }
-  s.innerHTML = '<div class="empty">Ingesting…</div>';
-  const d = await api('/api/graphrag/upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content, source: 'paste', subject })
-  });
-  if (d.error) { s.innerHTML = `<div class="empty" style="color:var(--red)">${d.error}</div>`; return; }
-  s.innerHTML = `<div class="empty" style="color:var(--green)">Done: ${d.chunks||0} chunks — subject: ${d.subject||'?'}</div>`;
-  document.getElementById('paste-text').value = '';
-  loadRecentDocs();
+function grUpdateSubmitBtn() {
+  const btn = document.getElementById('gr-submit-btn');
+  if (btn) btn.disabled = grSelectedTopics.length === 0;
 }
+
+async function grSubmitIngest() {
+  const type = document.querySelector('input[name="gr-src-type"]:checked')?.value || 'text';
+  const notes = document.getElementById('gr-notes').value.trim();
+  const status = document.getElementById('gr-ingest-status');
+  const btn = document.getElementById('gr-submit-btn');
+
+  if (grSelectedTopics.length === 0) { status.innerHTML = '<span style="color:var(--red)">Add at least one topic.</span>'; return; }
+
+  let payload, endpoint;
+  if (type === 'text') {
+    const text = document.getElementById('gr-paste-text').value.trim();
+    if (!text) { status.innerHTML = '<span style="color:var(--red)">Content is required.</span>'; return; }
+    endpoint = '/api/graphrag/ingest-text';
+    payload = { text, topics: grSelectedTopics, notes };
+  } else {
+    const filePath = document.getElementById('gr-file-path').value.trim();
+    if (!filePath) { status.innerHTML = '<span style="color:var(--red)">File path is required.</span>'; return; }
+    endpoint = '/api/graphrag/ingest-file';
+    payload = { filePath, topics: grSelectedTopics, notes };
+  }
+
+  btn.disabled = true;
+  status.innerHTML = '<span class="gr-spinner"></span> Ingesting…';
+
+  const d = await api(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+
+  if (d.error) {
+    status.innerHTML = `<div class="gr-error">${esc(d.error)}</div>`;
+    btn.disabled = false;
+    return;
+  }
+
+  const firstTopic = grSelectedTopics[0];
+  status.innerHTML = `<div class="gr-success">Ingested ${d.chunks||0} chunks into [${grSelectedTopics.map(esc).join(', ')}].
+    <span style="cursor:pointer;text-decoration:underline;margin-left:8px" onclick="grSwitchTab('browse');grSelectTopic(${JSON.stringify(firstTopic)})">View in Browse →</span>
+  </div>`;
+
+  // Reset form
+  if (type === 'text') document.getElementById('gr-paste-text').value = '';
+  else document.getElementById('gr-file-path').value = '';
+  grSelectedTopics = [];
+  grRenderChips();
+  btn.disabled = true;
+
+  // Refresh topic list (count may have changed)
+  await grLoadTopics();
+}
+
+// Legacy stubs (called from nav / loadRecentDocs)
+async function loadRecentDocs() { /* merged into Browse tab */ }
+function handleDrop() {}
+function uploadFiles() {}
+function ingestURL() {}
+function ingestPasted() {}
 
 // ── Memory ─────────────────────────────────────────────────────────────────
 const MS_DOT_COLORS = {

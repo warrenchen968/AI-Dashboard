@@ -561,6 +561,9 @@ const readBody = req => new Promise((res,rej) => {
 // ─── External service helpers (Phase D) ──────────────────────────────────────
 const { buildLmStudioService } = require('./services-external');
 
+// ─── Graph RAG routes (Phase E.2) ────────────────────────────────────────────
+const handleGraphrag = require('./graphrag-routes');
+
 // ─── Principle #9 panels (Compute / Skills / Software) ───────────────────────
 const { _internals: p9 } = require('./principle9-routes');
 const p9SkillSources = [
@@ -826,6 +829,9 @@ print(json.dumps(get_recent_documents(20)))
     if (url==='/api/compute')       { json(await p9.buildCompute()); return; }
     if (url==='/api/skills/detail') { json(p9.buildSkillsDetail(p9SkillSources)); return; }
     if (url==='/api/software')      { json(await p9.buildSoftware(__dirname, p9Pm2Reader)); return; }
+
+    // ── Graph RAG (Phase E.2) ────────────────────────────────────────────────
+    if (url.startsWith('/api/graphrag/')) { await handleGraphrag(url, req, res, json, readBody); return; }
 
     res.writeHead(404); res.end('Not found');
 

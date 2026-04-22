@@ -106,3 +106,102 @@ Dependency-ordered software inventory (Principle #9 item 3: 软件清单). The s
 - `self` — always `ok` (the dashboard itself)
 
 Items sorted by `order` (ascending). Users edit `software-manifest.json` to add/remove/reorder.
+
+---
+
+## GET `/api/graphrag/topics`
+
+Lists all user-defined Graph RAG topics with document counts.
+
+```json
+{
+  "topics": [
+    { "name": "WhatsApp-Zero", "count": 14, "createdAt": "2026-04-20T08:00:00.000Z" },
+    { "name": "Learn-TypeScript", "count": 3, "createdAt": "2026-04-21T12:00:00.000Z" }
+  ]
+}
+```
+
+`count` is the number of documents attached to that topic via the `source_topics` join table.
+
+---
+
+## POST `/api/graphrag/topics`
+
+Creates a new topic. Body: `{ "name": "TopicName" }`.
+
+**201 Created:**
+```json
+{ "name": "TopicName", "createdAt": "2026-04-22T10:00:00.000Z" }
+```
+
+**400 Bad Request** — name missing or empty:
+```json
+{ "error": "name required" }
+```
+
+**409 Conflict** — topic already exists:
+```json
+{ "error": "topic exists", "name": "TopicName" }
+```
+
+---
+
+## POST `/api/graphrag/ingest-text`
+
+Ingests pasted text into Graph RAG, attaches to one or more topics (created on-the-fly if absent).
+
+**Request body:**
+```json
+{
+  "text": "Full text content to ingest...",
+  "topics": ["TopicA", "TopicB"],
+  "notes": "Optional annotation"
+}
+```
+
+**200 OK:**
+```json
+{
+  "sourceId": 42,
+  "topics": ["TopicA", "TopicB"],
+  "ingestedAt": "2026-04-22T10:00:00.000Z",
+  "chunks": 7
+}
+```
+
+**400 Bad Request** — `text` missing or `topics` empty/absent:
+```json
+{ "error": "topics required — pass at least one topic name" }
+```
+
+---
+
+## POST `/api/graphrag/ingest-file`
+
+Ingests a file from a server-side path into Graph RAG.
+
+**Request body:**
+```json
+{
+  "filePath": "D:/AIAssist/docs/notes.md",
+  "topics": ["Research"],
+  "notes": ""
+}
+```
+
+**200 OK:**
+```json
+{
+  "sourceId": 43,
+  "topics": ["Research"],
+  "ingestedAt": "2026-04-22T10:00:00.000Z",
+  "fileName": "notes.md",
+  "chunks": 12
+}
+```
+
+**400 Bad Request** — `filePath` missing, `topics` empty, or file not found:
+```json
+{ "error": "filePath required" }
+```

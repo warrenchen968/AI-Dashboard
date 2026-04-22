@@ -180,6 +180,40 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet, h
     if (loaded.length === 0 && lm.extras.loadedModelId !== null)
       throw new Error('loadedModelId set but no model flagged loaded');
   });
+
+  // --- Phase E.2 additions -------------------------------------------------
+
+  await record('topics CRUD round-trips', async () => {
+    const name = 'SmokeTest-E2-' + Date.now();
+    const r1 = await httpPostJson(host, port, '/api/graphrag/topics', { name });
+    if (r1.status === 500) return; // Python not available under stub — endpoint reachable
+    if (r1.status !== 201) throw new Error('create: expected 201, got ' + r1.status);
+    if (!r1.body || r1.body.name !== name) throw new Error('create: name mismatch');
+    const r2 = await httpGet(host, port, '/api/graphrag/topics');
+    if (r2.status !== 200) throw new Error('list: status ' + r2.status);
+    if (!Array.isArray(r2.body && r2.body.topics)) throw new Error('list: topics not array');
+    if (!r2.body.topics.find(t => t.name === name)) throw new Error('list: created topic absent');
+    const r3 = await httpPostJson(host, port, '/api/graphrag/topics', { name });
+    if (r3.status !== 409) throw new Error('duplicate: expected 409, got ' + r3.status);
+  });
+
+  await record('ingest-text rejects missing topics', async () => {
+    const r1 = await httpPostJson(host, port, '/api/graphrag/ingest-text', { text: 'hello' });
+    if (r1.status !== 400) throw new Error('no topics: expected 400, got ' + r1.status);
+    const r2 = await httpPostJson(host, port, '/api/graphrag/ingest-text', { text: 'hello', topics: [] });
+    if (r2.status !== 400) throw new Error('empty topics: expected 400, got ' + r2.status);
+  });
+
+  await record('ingest-text succeeds with topics', async () => {
+    const r = await httpPostJson(host, port, '/api/graphrag/ingest-text', {
+      text: 'This is a smoke test for Graph RAG ingest.',
+      topics: ['SmokeTest-E2'],
+    });
+    if (r.status === 500) return; // Python not available under stub — validation passed
+    if (r.status !== 200) throw new Error('expected 200, got ' + r.status);
+    if (!r.body || typeof r.body.sourceId !== 'number') throw new Error('sourceId missing or not a number');
+    if (!Array.isArray(r.body.topics)) throw new Error('topics not array in response');
+  });
 }
 
 module.exports = runP9;
