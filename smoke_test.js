@@ -21,13 +21,33 @@
  */
 'use strict';
 
-const http = require('http');
-const cp   = require('child_process');
+const http    = require('http');
+const cp      = require('child_process');
+const { promisify } = require('util');
 
-// ── Stub child_process.exec so pm2/python/lms/nvidia-smi do not break the test ─
+// ── Stub child_process.exec so pm2/lms/nvidia-smi do not break the test ─
+// Python graphrag temp-file calls (graphrag-*.py) are NOT stubbed — they need
+// real Python so that /api/graphrag/* routes work as genuine integration tests.
+const _realExec      = cp.exec;
+const _realExecAsync = promisify(_realExec);  // resolves { stdout, stderr }
+
 cp.exec = (cmd, opts, cb) => {
   if (typeof opts === 'function') { cb = opts; opts = {}; }
+  // Pass pyRun / pyRunBg temp-file calls through to real Python
+  if (typeof cmd === 'string' && cmd.includes('graphrag-')) {
+    return _realExec.call(cp, cmd, opts, cb);
+  }
   process.nextTick(() => cb(new Error('stubbed'), '', ''));
+};
+// Give the stub the same promisify.custom behaviour as real exec so that
+// `execAsync = promisify(exec)` in graphrag-routes.js resolves { stdout, stderr }
+// rather than the raw first arg (which standard promisify would give).
+cp.exec[promisify.custom] = async (cmd, opts) => {
+  if (typeof opts !== 'object' || opts === null) opts = {};
+  if (typeof cmd === 'string' && cmd.includes('graphrag-')) {
+    return _realExecAsync(cmd, opts);
+  }
+  throw Object.assign(new Error('stubbed'), { stdout: '', stderr: '' });
 };
 
 require('./server.js');

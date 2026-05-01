@@ -184,17 +184,21 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet, h
   // --- Phase E.2 additions -------------------------------------------------
 
   await record('topics CRUD round-trips', async () => {
-    const name = 'SmokeTest-E2-' + Date.now();
+    const name = 'smoke-topic-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+    // Create
     const r1 = await httpPostJson(host, port, '/api/graphrag/topics', { name });
-    if (r1.status === 500) return; // Python not available under stub — endpoint reachable
-    if (r1.status !== 201) throw new Error('create: expected 201, got ' + r1.status);
-    if (!r1.body || r1.body.name !== name) throw new Error('create: name mismatch');
+    if (r1.status !== 201) throw new Error('create: expected 201, got ' + r1.status + ' — ' + JSON.stringify(r1.body));
+    if (!r1.body || r1.body.name !== name) throw new Error('create: name mismatch — got ' + JSON.stringify(r1.body));
+    if (!r1.body.createdAt) throw new Error('create: createdAt missing');
+    // List — created topic must appear
     const r2 = await httpGet(host, port, '/api/graphrag/topics');
-    if (r2.status !== 200) throw new Error('list: status ' + r2.status);
+    if (r2.status !== 200) throw new Error('list: expected 200, got ' + r2.status);
     if (!Array.isArray(r2.body && r2.body.topics)) throw new Error('list: topics not array');
     if (!r2.body.topics.find(t => t.name === name)) throw new Error('list: created topic absent');
+    // Duplicate → 409
     const r3 = await httpPostJson(host, port, '/api/graphrag/topics', { name });
     if (r3.status !== 409) throw new Error('duplicate: expected 409, got ' + r3.status);
+    if (!r3.body || r3.body.error !== 'topic exists') throw new Error('duplicate: error field wrong — ' + JSON.stringify(r3.body));
   });
 
   await record('ingest-text rejects missing topics', async () => {
@@ -205,14 +209,15 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet, h
   });
 
   await record('ingest-text succeeds with topics', async () => {
+    const sentinel = 'smoke ingest sentinel ' + Date.now();
     const r = await httpPostJson(host, port, '/api/graphrag/ingest-text', {
-      text: 'This is a smoke test for Graph RAG ingest.',
-      topics: ['SmokeTest-E2'],
+      text: sentinel,
+      topics: ['smoke-test'],
     });
-    if (r.status === 500) return; // Python not available under stub — validation passed
-    if (r.status !== 200) throw new Error('expected 200, got ' + r.status);
-    if (!r.body || typeof r.body.sourceId !== 'number') throw new Error('sourceId missing or not a number');
-    if (!Array.isArray(r.body.topics)) throw new Error('topics not array in response');
+    if (r.status !== 200) throw new Error('expected 200, got ' + r.status + ' — ' + JSON.stringify(r.body));
+    if (!r.body || !r.body.sourceId) throw new Error('sourceId missing or falsy');
+    if (typeof r.body.chunks !== 'number' || r.body.chunks < 1) throw new Error('chunks must be a number >= 1, got ' + r.body.chunks);
+    if (!Array.isArray(r.body.topics) || !r.body.topics.includes('smoke-test')) throw new Error('topics missing "smoke-test" — got ' + JSON.stringify(r.body.topics));
   });
 }
 

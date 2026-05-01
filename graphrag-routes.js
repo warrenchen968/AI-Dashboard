@@ -19,27 +19,60 @@
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
+const fs     = require('fs');
+const os     = require('os');
+const path   = require('path');
+const crypto = require('crypto');
 
 const GRAPH_RAG_ROOT = 'D:/AIAssist/home/graph-rag';
-const PYTHON_CMD     = '"C:\\Users\\warre\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"';
+// No surrounding quotes — the path is injected directly into the command string below.
+const PYTHON_CMD = 'C:\\Users\\warre\\AppData\\Local\\Programs\\Python\\Python311\\python.exe';
 
-function pyRun(scriptLines, timeoutMs = 15000) {
-  // Join script lines into a semicolon-separated one-liner for -c
-  const oneliner = scriptLines
-    .join('\n')
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"');
-  return execAsync(`${PYTHON_CMD} -c "${oneliner}"`, { windowsHide: true, timeout: timeoutMs });
+/**
+ * Run a Python script given as an array of source lines.
+ * Writes the lines to a temp .py file and executes that file — no shell
+ * escaping of newlines, quotes, or backslashes required.
+ */
+async function pyRun(scriptLines, timeoutMs = 15000) {
+  const tmpFile = path.join(
+    os.tmpdir(),
+    `graphrag-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.py`
+  );
+  fs.writeFileSync(tmpFile, scriptLines.join('\n'), 'utf8');
+  try {
+    return await execAsync(
+      `"${PYTHON_CMD}" "${tmpFile}"`,
+      { windowsHide: true, timeout: timeoutMs }
+    );
+  } finally {
+    fs.unlink(tmpFile, () => {});
+  }
+}
+
+/**
+ * Fire-and-forget background Python execution via temp file.
+ * Temp file is deleted in the exec callback — safe even if the script hangs.
+ */
+function pyRunBg(scriptLines, timeoutMs = 120000) {
+  const tmpFile = path.join(
+    os.tmpdir(),
+    `graphrag-bg-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.py`
+  );
+  fs.writeFileSync(tmpFile, scriptLines.join('\n'), 'utf8');
+  exec(
+    `"${PYTHON_CMD}" "${tmpFile}"`,
+    { windowsHide: true, timeout: timeoutMs },
+    () => fs.unlink(tmpFile, () => {})
+  );
 }
 
 function bgIndex() {
-  const script = [
+  pyRunBg([
     `import sys`,
     `sys.path.insert(0, '${GRAPH_RAG_ROOT}')`,
     `from indexing.extractor import index_unprocessed_chunks`,
     `index_unprocessed_chunks(20)`,
-  ].join(';');
-  exec(`${PYTHON_CMD} -c "${script.replace(/"/g, '\\"')}"`, { windowsHide: true, timeout: 120000 });
+  ]);
 }
 
 /**
@@ -107,16 +140,18 @@ async function handleGraphrag(url, req, res, json, readBody) {
       return json({ error: 'topics required — pass at least one topic name' }, 400);
 
     const cleanTopics = topics.map(t => String(t).trim()).filter(Boolean);
-    const safeTopics  = JSON.stringify(cleanTopics).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const safeText    = JSON.stringify(text).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const safeNotes   = JSON.stringify((notes || '').toString()).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    // JSON.stringify produces valid Python string literals directly — no extra
+    // shell escaping needed now that pyRun writes to a temp file (not -c "...").
+    const safeTopics  = JSON.stringify(cleanTopics);
+    const safeText    = JSON.stringify(text);
+    const safeNotes   = JSON.stringify((notes || '').toString());
     const title       = 'dashboard-paste-' + Date.now();
 
     const lines = [
       `import sys, json`,
       `sys.path.insert(0, '${GRAPH_RAG_ROOT}')`,
       `from ingestion.ingest import ingest_text`,
-      `r = ingest_text(${JSON.stringify(title).replace(/"/g, '\\"')}, ${safeText}, source='dashboard', topics=${safeTopics}, ingested_by='user', notes=${safeNotes})`,
+      `r = ingest_text(${JSON.stringify(title)}, ${safeText}, source='dashboard', topics=${safeTopics}, ingested_by='user', notes=${safeNotes})`,
       `print(json.dumps({'sourceId': r['doc_id'], 'topics': r['topics'], 'isNew': r['is_new'], 'chunks': r['chunks']}))`,
     ];
     try {
@@ -140,9 +175,11 @@ async function handleGraphrag(url, req, res, json, readBody) {
       return json({ error: 'topics required — pass at least one topic name' }, 400);
 
     const cleanTopics  = topics.map(t => String(t).trim()).filter(Boolean);
-    const safeTopics   = JSON.stringify(cleanTopics).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const safeFilePath = JSON.stringify(filePath.replace(/\\/g, '/')).replace(/"/g, '\\"');
-    const safeNotes    = JSON.stringify((notes || '').toString()).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    // JSON.stringify produces valid Python string literals directly — no extra
+    // shell escaping needed now that pyRun writes to a temp file (not -c "...").
+    const safeTopics   = JSON.stringify(cleanTopics);
+    const safeFilePath = JSON.stringify(filePath.replace(/\\/g, '/'));
+    const safeNotes    = JSON.stringify((notes || '').toString());
 
     const lines = [
       `import sys, json`,

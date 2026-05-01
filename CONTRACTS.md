@@ -205,3 +205,29 @@ Ingests a file from a server-side path into Graph RAG.
 ```json
 { "error": "filePath required" }
 ```
+
+---
+
+## Helpers
+
+Internal helpers in `graphrag-routes.js`. Do not call from outside the module.
+
+### `pyRun(scriptLines, timeoutMs?)`
+
+```
+pyRun(scriptLines: string[], timeoutMs?: number = 15000)
+  → Promise<{ stdout: string, stderr: string }>
+```
+
+Writes `scriptLines` (joined with `\n`) to a uniquely-named temp `.py` file under `os.tmpdir()`, executes it with the configured Python binary, and resolves with `{ stdout, stderr }`. The temp file is deleted in a `finally` block whether the call succeeds or throws.
+
+**Why temp-file instead of `python -c "..."`:** On Windows, `cmd.exe` ends a `python -c "..."` argument at the first embedded newline. Multi-line scripts (including `try/except` blocks) would silently truncate to the first line, producing empty stdout. The temp-file approach is immune to newlines, single-quotes, double-quotes, and backslashes. **Never revert to inline `-c` on Windows.**
+
+### `pyRunBg(scriptLines, timeoutMs?)`
+
+```
+pyRunBg(scriptLines: string[], timeoutMs?: number = 120000)
+  → void
+```
+
+Fire-and-forget variant of `pyRun`. Uses the same temp-file approach; the file is deleted inside the `exec` callback so it is cleaned up even if the script hangs until the timeout. Used by `bgIndex()` to trigger background chunk indexing without blocking the HTTP response.

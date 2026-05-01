@@ -157,6 +157,21 @@ The current schema has a hardcoded `subject` column with fixed keyword values (`
 
 **LM Studio at login:** `HKCU\Run` key `electron.app.LM Studio` → starts the GUI at logon with `--run-as-service`. This explains why the app process is running but the server is not — the GUI launches but the user hasn't clicked "Start Server."
 
+> ⚠️ Discovery correction — 2026-05-01
+>
+> Two facts contradict the original Phase C / Phase A discovery:
+>
+> 1. `ecosystem.config.js` lives at `D:\AIAssist\ecosystem.config.js`
+>    (one directory above the dashboard repo), NOT inside the
+>    dashboard repo. Earlier notes implying it was inside the repo
+>    were wrong.
+>
+> 2. Phase C did NOT in fact wire memory-miner into PM2. The
+>    ecosystem.config.js created in Phase C contained only
+>    ai-dashboard, whatsapp-bridge, wechat-bridge. Phase E.2-FIX
+>    adds the memory-miner block. After this fix, the file contains
+>    all four apps.
+
 ---
 
 ## Manifest corrections summary (Phase B input)
