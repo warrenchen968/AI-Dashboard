@@ -11,7 +11,7 @@ Set-StrictMode -Off
 
 $PY = 'C:\Users\warre\AppData\Local\Programs\Python\Python311\python.exe'
 
-# ── Section 1: apply schema migration ─────────────────────────────────────────
+# -- Section 1: apply schema migration --------------------------------------------
 Write-Host ""
 Write-Host "=== Section 1: Schema migration ===" -ForegroundColor Cyan
 
@@ -30,7 +30,7 @@ $migScript | Out-File -FilePath $tmpPy -Encoding utf8
 & $PY $tmpPy
 Remove-Item $tmpPy -Force
 
-# ── Section 2: restart services ───────────────────────────────────────────────
+# -- Section 2: restart services --------------------------------------------------
 Write-Host ""
 Write-Host "=== Section 2: pm2 restart ===" -ForegroundColor Cyan
 pm2 restart whatsapp-bridge
@@ -38,7 +38,7 @@ pm2 restart ai-dashboard
 pm2 save
 pm2 list
 
-# ── Section 3: smoke-check topics endpoint ────────────────────────────────────
+# -- Section 3: smoke-check topics endpoint ---------------------------------------
 Write-Host ""
 Write-Host "=== Section 3: topics endpoint smoke check ===" -ForegroundColor Cyan
 Start-Sleep -Seconds 3
@@ -56,7 +56,7 @@ try {
     Write-Host "FAIL - $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# ── Section 4: smoke-check ingest-text rejects missing topics ─────────────────
+# -- Section 4: smoke-check ingest-text rejects missing topics --------------------
 Write-Host ""
 Write-Host "=== Section 4: ingest-text validation smoke check ===" -ForegroundColor Cyan
 
