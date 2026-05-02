@@ -1,0 +1,5 @@
+# --- Local helper scripts (per-phase patches; not part of the dashboard product) ---
+phase-*.ps1
+
+# --- Claude Code per-machine settings ---
+.claude/
