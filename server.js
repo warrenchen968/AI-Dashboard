@@ -54,7 +54,8 @@ const PORT          = process.env.PORT ? Number(process.env.PORT) : 7788;
 const POLL_INTERVAL = 5 * 60 * 1000;
 const LOG_LINES     = 150;
 
-const BASE = 'D:\\AIAssist';
+const BASE   = 'D:\\AIAssist';
+const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 const PATHS = {
   dashboard: `${BASE}\\dashboard\\AI-Dashboard`,
   palace:    `${BASE}\\memory`,
@@ -65,11 +66,10 @@ const PATHS = {
   wcConfig:  `${BASE}\\wechat-bridge\\config.json`,
   pm2Logs:   path.join(os.homedir(), '.pm2', 'logs'),
   graphRag:  `${BASE}\\home\\graph-rag`,
-  python:    'C:\\Users\\warre\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
 };
 
-const MP_CMD = `"${PATHS.python}" -m mempalace`;
-const PY_CMD = `"${PATHS.python}"`;
+const MP_CMD = `${PYTHON} -m mempalace`;
+const PY_CMD = PYTHON;
 
 // ─── Security (localhost only) ────────────────────────────────────────────────
 const isAllowed = req => {
