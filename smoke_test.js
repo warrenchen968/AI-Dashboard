@@ -66,6 +66,7 @@ const CONTRACTS = {
   '/api/graphrag/stats':    { must: ['online', 'entities', 'relations', 'documents', 'chunks'] },
   '/api/graphrag/subjects': { must: ['subjects'] },
   '/api/skills':            { must: ['skills'] },
+  '/api/skills/registry':  { must: ['skills', 'version', 'lastSync'] },
   '/api/memory/milestones': { must: ['milestones'] },
   '/api/memory/stats':      { must: ['totalTurns', 'totalDays'] },
   '/api/gpu':               { must: ['ok', 'gpus'] },

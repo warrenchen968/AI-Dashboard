@@ -219,6 +219,38 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet, h
     if (typeof r.body.chunks !== 'number' || r.body.chunks < 1) throw new Error('chunks must be a number >= 1, got ' + r.body.chunks);
     if (!Array.isArray(r.body.topics) || !r.body.topics.includes('smoke-test')) throw new Error('topics missing "smoke-test" — got ' + JSON.stringify(r.body.topics));
   });
+
+  // --- Phase R3-P02a additions ---------------------------------------------
+
+  await record('GET /api/skills/registry returns version + skills[] + lastSync', async () => {
+    const r = await httpGet(host, port, '/api/skills/registry');
+    if (r.status !== 200 && r.status !== 503) throw new Error('unexpected status ' + r.status);
+    const b = r.body;
+    if (!b || typeof b !== 'object') throw new Error('expected object response');
+    if (!('skills' in b))  throw new Error('missing key: skills');
+    if (!('version' in b)) throw new Error('missing key: version');
+    // lastSync is null when index.json not yet created (503 path), present otherwise
+    if (!('lastSync' in b)) throw new Error('missing key: lastSync');
+    if (!Array.isArray(b.skills)) throw new Error('skills must be an array');
+  });
+
+  await record('skills-watcher appears in /api/services with kind="pm2"', async () => {
+    const r = await httpGet(host, port, '/api/services');
+    if (r.status !== 200) throw new Error('status ' + r.status);
+    const sw = r.body.find(s => s.id === 'skills-watcher');
+    if (!sw) throw new Error('skills-watcher missing from /api/services');
+    if (sw.kind !== 'pm2') throw new Error('skills-watcher kind: ' + sw.kind + ' (expected pm2)');
+  });
+
+  await record('dashboard.html contains Skills Registry tab element', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const html = fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf8');
+    if (!html.includes('id="p-skills-registry"'))
+      throw new Error('p-skills-registry page div not found in dashboard.html');
+    if (!html.includes("nav('skills-registry')"))
+      throw new Error('skills-registry nav handler not found in dashboard.html');
+  });
 }
 
 module.exports = runP9;

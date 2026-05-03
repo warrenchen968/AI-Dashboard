@@ -334,6 +334,10 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:14px 0}
   <div class="nav-item" onclick="nav('skills')">
     <span class="nav-icon">◆</span>Skills &amp; Stack
   </div>
+  <div class="nav-item" onclick="nav('skills-registry')" id="nav-skills-registry">
+    <span class="nav-icon">◈</span>Skills Registry
+    <span class="nav-badge nb-neutral" id="nb-skills-registry">—</span>
+  </div>
   <div class="nav-item" onclick="nav('logs')">
     <span class="nav-icon">▤</span>Logs
   </div>
@@ -804,6 +808,23 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:14px 0}
       </div>
     </div>
 
+    <!-- ══════════════ SKILLS REGISTRY ══════════════ -->
+    <div class="page" id="p-skills-registry">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Skills Registry</span>
+          <span class="card-sub" id="sr-meta" style="margin-left:12px;font-size:0.82em;opacity:0.6">loading…</span>
+        </div>
+        <div class="card-body" id="sr-body">
+          <div class="empty">Loading…</div>
+        </div>
+      </div>
+      <div class="card" id="sr-errors-card" style="display:none;margin-top:12px">
+        <div class="card-head"><span class="card-title" style="color:#e05252">Parse Errors</span></div>
+        <div class="card-body" id="sr-errors-body"></div>
+      </div>
+    </div>
+
     <!-- ══════════════ LOGS ══════════════ -->
     <div class="page" id="p-logs">
       <div class="log-toolbar">
@@ -1240,6 +1261,7 @@ function nav(id) {
     memory: ['Memory Palace', 'Persistent AI memory'],
     architecture: ['Architecture', 'System design diagrams'],
     skills: ['Skills & Stack', 'AI capabilities and technology stack'],
+    'skills-registry': ['Skills Registry', 'R3 agent skills — live registry from D:\\AIAssist\\skills\\'],
     logs: ['Logs', 'Live process output'],
     principle9: ['Principle #9', 'Compute · Skills · Software manifest'],
   };
@@ -1252,6 +1274,7 @@ function nav(id) {
   if (id === 'services') loadServices();
   if (id === 'memory') loadMemory();
   if (id === 'skills') loadSkills();
+  if (id === 'skills-registry') loadSkillsRegistry();
   if (id === 'logs') loadLogs();
 }
 
@@ -1771,6 +1794,73 @@ async function loadSkills() {
         <div class="skill-tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
       </div>`;
   }).join('');
+}
+
+// ── Skills Registry (R3) ───────────────────────────────────────────────────
+async function loadSkillsRegistry() {
+  const body = document.getElementById('sr-body');
+  const meta = document.getElementById('sr-meta');
+  const errCard = document.getElementById('sr-errors-card');
+  const errBody = document.getElementById('sr-errors-body');
+  if (!body) return;
+  body.innerHTML = '<div class="empty">Loading…</div>';
+  const d = await api('/api/skills/registry');
+  if (d.error) {
+    body.innerHTML = `<div class="empty">Error: ${esc(d.error)}</div>`;
+    return;
+  }
+  const skills = Array.isArray(d.skills) ? d.skills : [];
+  const errors = Array.isArray(d.errors) ? d.errors : [];
+  const sync   = d.lastSync ? new Date(d.lastSync).toLocaleString() : '—';
+  meta.textContent = `${skills.length} skill${skills.length !== 1 ? 's' : ''} · last sync ${sync}`;
+  const nbEl = document.getElementById('nb-skills-registry');
+  if (nbEl) { nbEl.textContent = skills.length; nbEl.className = 'nav-badge ' + (skills.length ? 'nb-ok' : 'nb-neutral'); }
+
+  if (!skills.length) {
+    body.innerHTML = `<div class="empty" style="padding:24px 0">
+      No skills registered yet.<br>
+      <span style="opacity:0.55;font-size:0.88em">Add a SKILL.md to D:\\AIAssist\\skills\\ to register one.</span>
+    </div>`;
+  } else {
+    // Group by category
+    const bycat = {};
+    for (const s of skills) { const c = s.category || 'uncategorised'; (bycat[c] = bycat[c] || []).push(s); }
+    body.innerHTML = Object.entries(bycat).map(([cat, list]) => `
+      <div style="margin-bottom:18px">
+        <div style="font-size:0.78em;text-transform:uppercase;letter-spacing:2px;opacity:0.5;margin-bottom:8px">${esc(cat)}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="font-size:0.78em;opacity:0.5;text-align:left">
+            <th style="padding:4px 8px">Name</th>
+            <th style="padding:4px 8px">Description</th>
+            <th style="padding:4px 8px">Type</th>
+            <th style="padding:4px 8px">Ver</th>
+            <th style="padding:4px 8px">Source</th>
+            <th style="padding:4px 8px">Agents</th>
+            <th style="padding:4px 8px">Tags</th>
+          </tr></thead>
+          <tbody>${list.map(s => `<tr style="border-top:1px solid #1e2d3d;font-size:0.84em">
+            <td style="padding:5px 8px;font-weight:600;white-space:nowrap">${esc(s.name)}</td>
+            <td style="padding:5px 8px;opacity:0.8">${esc(s.description)}</td>
+            <td style="padding:5px 8px"><span class="tag">${esc(s.type)}</span></td>
+            <td style="padding:5px 8px;opacity:0.55">${esc(s.version || '')}</td>
+            <td style="padding:5px 8px;opacity:0.55">${esc((s.source && s.source.kind) || '')}</td>
+            <td style="padding:5px 8px;opacity:0.7">${esc((s.agents || []).join(', '))}</td>
+            <td style="padding:5px 8px">${(s.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' ')}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`).join('');
+  }
+
+  if (errors.length) {
+    errCard.style.display = '';
+    errBody.innerHTML = errors.map(e => `
+      <div style="margin-bottom:6px;font-size:0.83em">
+        <span style="color:#e05252">&#x26A0;</span>
+        <span style="opacity:0.7">${esc(e.path)}</span> &mdash; ${esc(e.error)}
+      </div>`).join('');
+  } else {
+    errCard.style.display = 'none';
+  }
 }
 
 // ── Logs ───────────────────────────────────────────────────────────────────

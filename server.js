@@ -377,6 +377,7 @@ function getServicesDefinition() {
     { id:'mempalace',       name:'MemPalace',        type:'cli',      icon:'🏛', description:'Long-term memory CLI',    cmd:MP_CMD },
     { id:'graph-rag',       name:'Graph RAG',        type:'db',       icon:'🕸', description:'Knowledge graph',         dbPath:PATHS.graphDB },
     { id:'ai-dashboard',    name:'AI Dashboard',     type:'self',     icon:'📊', description:'This dashboard',          port:PORT },
+    { id:'skills-watcher',  name:'Skills Watcher',   type:'pm2',      icon:'◈',  description:'Watches skills/ + rebuilds index.json', pm2Name:'skills-watcher', script:`${BASE}\\skills-watcher\\watcher.js`, cwd:`${BASE}\\skills-watcher` },
   ];
 }
 
@@ -756,7 +757,7 @@ print(json.dumps(get_recent_documents(20)))
       const action = parts[4]; // start|stop|restart
       if (!['start','stop','restart'].includes(action)) { json({error:'Invalid action'},400); return; }
       // Allowlist: only PM2-managed services accept start/stop/restart.
-      const ALLOWED_SVC = new Set(['ai-dashboard', 'whatsapp-bridge', 'wechat-bridge', 'memory-miner']);
+      const ALLOWED_SVC = new Set(['ai-dashboard', 'whatsapp-bridge', 'wechat-bridge', 'memory-miner', 'skills-watcher']);
       if (!ALLOWED_SVC.has(svcId)) { json({error:'unknown service', name:svcId}, 400); return; }
       const svcDef  = getServicesDefinition().find(s => s.id === svcId);
       const pm2Name = svcDef?.pm2Name || svcId;
@@ -806,6 +807,18 @@ print(json.dumps(get_recent_documents(20)))
     // ── Skills & tech stack ──────────────────────────────────────────────────
     if (url==='/api/skills') {
       json({ skills: getSkills(), software: cachedStatus?.software || [] });
+      return;
+    }
+
+    // ── R3 Skills Registry (reads D:\AIAssist\skills\index.json) ─────────────
+    if (url==='/api/skills/registry' && req.method==='GET') {
+      try {
+        const indexPath = 'D:\\AIAssist\\skills\\index.json';
+        if (!fs.existsSync(indexPath)) { json({ version: 1, skills: [], errors: [], lastSync: null, _comment: 'index.json not yet created; is skills-watcher running?' }, 503); return; }
+        const text = fs.readFileSync(indexPath, 'utf8');
+        const data = JSON.parse(text);
+        json(data);
+      } catch (e) { json({ error: e.message, skills: [], version: 1 }, 500); }
       return;
     }
 
