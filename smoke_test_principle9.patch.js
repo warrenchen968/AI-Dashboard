@@ -251,6 +251,75 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet, h
     if (!html.includes("nav('skills-registry')"))
       throw new Error('skills-registry nav handler not found in dashboard.html');
   });
+
+  // --- Phase R3-P02b additions ---------------------------------------------
+
+  const P02B_SKILLS = [
+    'search-graphrag', 'write-to-graphrag', 'code-generation', 'file-analysis',
+    'task-automation', 'web-research', 'query-mempalace', 'send-whatsapp-reply',
+    'human-confirm', 'invoke-claude-via-chrome', 'read-web-page',
+  ];
+
+  await record('GET /api/skills/registry returns >= 11 skills after P02b', async () => {
+    const r = await httpGet(host, port, '/api/skills/registry');
+    if (r.status !== 200) throw new Error('status ' + r.status);
+    const skills = r.body && r.body.skills;
+    if (!Array.isArray(skills)) throw new Error('skills not an array');
+    if (skills.length < 11) throw new Error('expected >= 11 skills, got ' + skills.length);
+  });
+
+  await record('All 11 P02b skill names present in registry', async () => {
+    const r = await httpGet(host, port, '/api/skills/registry');
+    if (r.status !== 200) throw new Error('status ' + r.status);
+    const names = new Set((r.body.skills || []).map(s => s.name));
+    const missing = P02B_SKILLS.filter(n => !names.has(n));
+    if (missing.length) throw new Error('missing skills: ' + missing.join(', '));
+  });
+
+  await record('At least 3 skills have status=implemented (search-graphrag, write-to-graphrag, query-mempalace)', async () => {
+    const r = await httpGet(host, port, '/api/skills/registry');
+    if (r.status !== 200) throw new Error('status ' + r.status);
+    const implemented = (r.body.skills || []).filter(s => s.status === 'implemented');
+    if (implemented.length < 3) throw new Error('expected >= 3 implemented, got ' + implemented.length + ': ' + implemented.map(s => s.name).join(', '));
+    const required = ['search-graphrag', 'write-to-graphrag', 'query-mempalace'];
+    const names = new Set(implemented.map(s => s.name));
+    const notImpl = required.filter(n => !names.has(n));
+    if (notImpl.length) throw new Error('these must be implemented: ' + notImpl.join(', '));
+  });
+
+  await record('At least one skill per category: knowledge-mgmt, coding, meta, web-scraping', async () => {
+    const r = await httpGet(host, port, '/api/skills/registry');
+    if (r.status !== 200) throw new Error('status ' + r.status);
+    const skills = r.body.skills || [];
+    const required = ['knowledge-mgmt', 'coding', 'meta', 'web-scraping'];
+    for (const cat of required) {
+      if (!skills.some(s => s.category === cat))
+        throw new Error('no skill found in category: ' + cat);
+    }
+  });
+
+  await record('mempalace ingest metadata present in index.json (or graceful skip)', async () => {
+    // This test only runs when mempalace is reachable on the machine (CW's environment).
+    // In any other environment it skips gracefully.
+    const fs   = require('fs');
+    const path = require('path');
+    const idxPath = path.join('D:\\AIAssist\\skills', 'index.json');
+    let idx;
+    try {
+      idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+    } catch (_) {
+      // index.json not present -- watcher has not run; skip
+      return;
+    }
+    const withMeta = (idx.skills || []).filter(s => s.lastIngestStatus);
+    if (withMeta.length === 0) {
+      // Watcher ran but mempalace was not reachable -- acceptable; just log
+      return;
+    }
+    // If any ingest ran, at least one must have succeeded or been skipped (not all failed)
+    const anyOk = withMeta.some(s => s.lastIngestStatus === 'success' || s.lastIngestStatus === 'skipped');
+    if (!anyOk) throw new Error('all mempalace ingests failed: ' + withMeta.map(s => s.name + '=' + s.lastIngestStatus).join(', '));
+  });
 }
 
 module.exports = runP9;
