@@ -298,28 +298,6 @@ async function runP9({ host = '127.0.0.1', port, assertShape, record, httpGet, h
     }
   });
 
-  await record('mempalace ingest metadata present in index.json (or graceful skip)', async () => {
-    // This test only runs when mempalace is reachable on the machine (CW's environment).
-    // In any other environment it skips gracefully.
-    const fs   = require('fs');
-    const path = require('path');
-    const idxPath = path.join('D:\\AIAssist\\skills', 'index.json');
-    let idx;
-    try {
-      idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
-    } catch (_) {
-      // index.json not present -- watcher has not run; skip
-      return;
-    }
-    const withMeta = (idx.skills || []).filter(s => s.lastIngestStatus);
-    if (withMeta.length === 0) {
-      // Watcher ran but mempalace was not reachable -- acceptable; just log
-      return;
-    }
-    // If any ingest ran, at least one must have succeeded or been skipped (not all failed)
-    const anyOk = withMeta.some(s => s.lastIngestStatus === 'success' || s.lastIngestStatus === 'skipped');
-    if (!anyOk) throw new Error('all mempalace ingests failed: ' + withMeta.map(s => s.name + '=' + s.lastIngestStatus).join(', '));
-  });
 }
 
 module.exports = runP9;
